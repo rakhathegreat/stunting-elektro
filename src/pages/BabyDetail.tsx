@@ -1,8 +1,6 @@
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { 
-  ArrowLeft, 
-  Edit, 
+import {
   Calendar, 
   User, 
   Activity,
@@ -11,10 +9,10 @@ import {
   AlertCircle,
   CheckCircle,
   FileText,
-  Camera,
   Ruler,
-  Weight
 } from 'lucide-react';
+import type { Child } from '../types/children';
+import type { GrowthRecord } from '../types/growth';
 
 const BabyDetail: React.FC = () => {
   const { id } = useParams();
@@ -22,7 +20,7 @@ const BabyDetail: React.FC = () => {
   const [activeTab, setActiveTab] = useState('overview');
 
   // Mock data - in real app, fetch based on ID
-  const baby = {
+  const baby: Child = {
     id: 1,
     name: 'Andi Pratama',
     gender: 'Laki-laki',
@@ -45,7 +43,7 @@ const BabyDetail: React.FC = () => {
     ]
   };
 
-  const growthData = [
+  const growthData: GrowthRecord[] = [
     {
       date: '2024-01-15',
       age: '14 bulan',

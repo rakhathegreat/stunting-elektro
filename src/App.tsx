@@ -12,7 +12,8 @@ import ParentDetail from './pages/ParentDetail';
 import BabyManagement from './pages/BabyManagement';
 import BabyDetail from './pages/BabyDetail';
 import Layout from './components/Layout';
-import { AuthContextProvider, useUserAuth } from './context/AuthContext';
+import { AuthContextProvider } from './context/AuthContext';
+import { useUserAuth } from "./context/auth-context"
 
 function AppRoutes() {
   const { session } = useUserAuth();
