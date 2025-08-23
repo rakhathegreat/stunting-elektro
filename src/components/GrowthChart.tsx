@@ -13,8 +13,8 @@ import { whoStandards } from "../data/whoStandards";
 import { supabase } from "../supabaseClient";
 
 interface GrowthChartProps {
-  gender: "Laki-laki" | "Perempuan";
-  id: string;
+  gender: string;
+  id: number | undefined;
   type: string;
 }
 

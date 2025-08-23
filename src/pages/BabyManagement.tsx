@@ -403,19 +403,6 @@ const BabyManagement: React.FC = () => {
                           {child.status_berat}
                         </span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-3 py-1 text-xs font-bold rounded-full ${
-                            child.status_tinggi === "Normal"
-                              ? "bg-gradient-to-r from-green-100 to-emerald-100 text-green-800"
-                              : child.status_tinggi === "Stunting"
-                              ? "bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800"
-                              : "bg-gradient-to-r from-red-100 to-rose-100 text-red-800"
-                          }`}
-                        >
-                          {child.status_tinggi}
-                        </span>
-                      </td>
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium">
                           {child.updated_at}

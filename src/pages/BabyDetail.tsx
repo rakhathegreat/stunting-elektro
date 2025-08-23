@@ -15,6 +15,7 @@ import { supabase } from "../supabaseClient";
 import BabyData from "../components/baby/baby-data-form";
 import type { Child } from "../types/children";
 import type { GrowthRecord } from "../types/growth";
+import GrowthChart from "../components/GrowthChart";
 
 const BabyDetail: React.FC = () => {
   const { id } = useParams();
@@ -118,7 +119,7 @@ const BabyDetail: React.FC = () => {
 
   /* ---------- render ---------- */
   return (
-    <div className="grid grid-cols-4 grid-rows-1 gap-4 px-6 h-[calc(75vh)]">
+    <div className="grid grid-cols-4 grid-rows-1 gap-4 px-6 h-fit">
       {/* SIDEBAR */}
       <div className="col-span-1 bg-white shadow-md rounded-2xl h-full">
         <div className="flex flex-col h-full py-6 px-6 gap-4">
@@ -128,7 +129,7 @@ const BabyDetail: React.FC = () => {
             </div>
 
             <div className="flex flex-col items-center gap-1">
-              <h3 className="text-xl font-bold text-gray-900">
+              <h3 className="text-xl font-semibold text-center text-gray-900">
                 {children.nama}
               </h3>
               <p className="text-gray-500 font-medium">
@@ -232,7 +233,7 @@ const BabyDetail: React.FC = () => {
                   className={`p-4 rounded-2xl border-2 shadow-lg ${
                     children.status_tinggi === 'Normal'
                       ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200'
-                      : children.status === 'Pendek'
+                      : children.status_tinggi === 'Pendek'
                       ? 'bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200'
                       : 'bg-gradient-to-br from-red-50 to-pink-50 border-red-200'
                   }`}
@@ -262,7 +263,7 @@ const BabyDetail: React.FC = () => {
                   className={`p-4 rounded-2xl border-2 shadow-lg ${
                     children.status_berat === 'Normal'
                       ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200'
-                      : children.status === 'Kurus'
+                      : children.status_berat === 'Kurus'
                       ? 'bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200'
                       : 'bg-gradient-to-br from-red-50 to-pink-50 border-red-200'
                   }`}
