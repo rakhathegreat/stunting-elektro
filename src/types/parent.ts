@@ -12,5 +12,6 @@ export interface Parent {
     kunjungan_terakhir: Date;
     pekerjaan: string;
     pendidikan: string;
+    
 
 }

@@ -14,6 +14,7 @@ import BabyDetail from './pages/BabyDetail';
 import Layout from './components/Layout';
 import { AuthContextProvider } from './context/AuthContext';
 import { useUserAuth } from "./context/auth-context"
+import { Toaster } from "sonner";
 
 function AppRoutes() {
   const { session } = useUserAuth();
@@ -46,6 +47,14 @@ export default function App() {
   return (
     <AuthContextProvider>
       <AppRoutes />
+      <Toaster 
+        position="top-right"
+        richColors
+        closeButton
+        toastOptions={{
+          duration: 4000,
+        }}
+      />
     </AuthContextProvider>
   );
 }

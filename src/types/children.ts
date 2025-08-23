@@ -8,8 +8,10 @@ export interface Child {
     gender: string;
     umur: number;
     updated_at: string;
-    status: string;
-    id_orang_tua?: Parent;
+    status_berat: string;
+    status_tinggi: string;
+    id_orang_tua?: string;
+    DataOrangTua?: Parent;
     created_at: string;
     catatan?: string;
     alergi?: string;
@@ -20,6 +22,5 @@ export interface EditChildProps {
     tanggal_lahir: string;
     gender: string;
     umur: number;
-    status: string;
     id_orang_tua: string;
 }

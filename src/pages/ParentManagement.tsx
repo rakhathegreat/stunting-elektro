@@ -67,10 +67,11 @@ const ParentManagement: React.FC = () => {
   }, []);
 
   const fetchChildren = async () => {
-    const { data, error } = await supabase.from("DataAnak").select("*");
+    const { data, error } = await supabase.from("DataAnak").select(`*, DataOrangTua(id, nama_ayah, nama_ibu)`);
     if (error) {
       console.error("Error fetching children:", error);
     } else {
+      console.log(data);
       setChildren(data || []);
     }
   };
@@ -81,7 +82,7 @@ const ParentManagement: React.FC = () => {
   }, []);
 
   const getChildCount = (parentId: string) => {
-    return children.filter((child) => child?.id_orang_tua?.id === parentId).length;
+    return children.filter((child) => child?.DataOrangTua?.id === parentId).length;
   };
 
   // 🔹 Tambah data baru
@@ -197,7 +198,7 @@ const ParentManagement: React.FC = () => {
                             onClick={() => navigate(`/parents/${parent.id}`)}
                             className="text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors text-left"
                           >
-                            {parent.nama_ayah}
+                            {parent.nama_ayah} & <br />{parent.nama_ibu}
                           </button>
                           <div className="text-sm text-muted-foreground flex items-center mt-1">
                             <MapPin className="h-3 w-3 mr-1" />
