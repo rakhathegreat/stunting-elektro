@@ -1,11 +1,12 @@
 export interface GrowthRecord {
 	date: string;
 	age: string;
-	height: number;
-	weight: number;
-	headCircumference: number;
+	tinggi: number;
+	berat: number;
+	lingkarKepala: number;
 	status: string;
 	statusColor: string;
 	confidence: number;
 	notes: string;
+	created_at: string | Date;
 }

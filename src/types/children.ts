@@ -11,6 +11,8 @@ export interface Child {
     status: string;
     id_orang_tua?: Parent;
     created_at: string;
+    catatan?: string;
+    alergi?: string;
 }
 
 export interface EditChildProps {
