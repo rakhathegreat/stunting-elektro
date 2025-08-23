@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Stethoscope, Eye, EyeOff } from 'lucide-react';
-import { useUserAuth } from '../context/AuthContext';
+import { useUserAuth } from '../context/auth-context';
 
 const Login: React.FC = () => {
   const { signInUser } = useUserAuth();

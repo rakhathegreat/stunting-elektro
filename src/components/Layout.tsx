@@ -10,7 +10,7 @@ import {
   Menu,
   X
 } from 'lucide-react';
-import { useUserAuth } from '../context/AuthContext';
+import { useUserAuth } from '../context/auth-context';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();

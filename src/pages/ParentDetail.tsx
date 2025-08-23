@@ -12,6 +12,8 @@ import {
   FileText,
   Activity
 } from 'lucide-react';
+import type { Parent } from "../types/parent";
+import type { Child } from "../types/children";
 
 const ParentDetail: React.FC = () => {
   const { id } = useParams();
@@ -19,7 +21,7 @@ const ParentDetail: React.FC = () => {
   const [activeTab, setActiveTab] = useState('info');
 
   // Mock data - in real app, fetch based on ID
-  const parent = {
+  const parent: Parent = {
     id: 1,
     name: 'Ibu Sari Dewi',
     email: 'sari.dewi@email.com',
@@ -38,7 +40,7 @@ const ParentDetail: React.FC = () => {
     }
   };
 
-  const children = [
+  const children: Child[] = [
     {
       id: 1,
       name: 'Andi Pratama',

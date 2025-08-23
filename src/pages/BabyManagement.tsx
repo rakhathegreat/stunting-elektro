@@ -1,66 +1,94 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Plus, User, Users, TrendingUp, Eye, Edit, Trash2 } from "lucide-react";
+import {
+  Search,
+  Plus,
+  User,
+  Users,
+  TrendingUp,
+  Eye,
+  Edit,
+  Trash2,
+} from "lucide-react";
 import { supabase } from "../supabaseClient";
-
+import type { Child } from "../types/children";
+import type { Parent } from "../types/parent";
+import { useForm } from "react-hook-form";
+import {zodResolver} from "@hookform/resolvers/zod";
+import { childrenSchema } from "../schems/children";
+import { z } from "zod"
+import { toast } from "sonner"
 
 const stats = [
-    {
-      name: 'Total Anak',
-      stat: '127',
-      icon: Users,
-      change: '+12%',
-      changeType: 'increase',
-      color: 'blue'
-    },
-    {
-      name: 'Normal',
-      stat: '89',
-      icon: Users,
-      change: '+8%',
-      changeType: 'increase',
-      color: 'green'
-    },
-    {
-      name: 'Stunting',
-      stat: '234',
-      icon: Users,
-      change: '+23%',
-      changeType: 'increase',
-      color: 'yellow'
-    },
-    {
-      name: 'Stunting Berat',
-      stat: '78%',
-      icon: Users,
-      change: '+5%',
-      changeType: 'increase',
-      color: 'red'
-    },
-    {
-      name: 'Usia Rata-Rata',
-      stat: '78%',
-      icon: Users,
-      change: '+5%',
-      changeType: 'increase',
-      color: 'blue'
-    }
-  ];
+  {
+    name: "Total Anak",
+    stat: "127",
+    icon: Users,
+    change: "+12%",
+    changeType: "increase",
+    color: "blue",
+  },
+  {
+    name: "Normal",
+    stat: "89",
+    icon: Users,
+    change: "+8%",
+    changeType: "increase",
+    color: "green",
+  },
+  {
+    name: "Stunting",
+    stat: "234",
+    icon: Users,
+    change: "+23%",
+    changeType: "increase",
+    color: "yellow",
+  },
+  {
+    name: "Stunting Berat",
+    stat: "78%",
+    icon: Users,
+    change: "+5%",
+    changeType: "increase",
+    color: "red",
+  },
+  {
+    name: "Usia Rata-Rata",
+    stat: "78%",
+    icon: Users,
+    change: "+5%",
+    changeType: "increase",
+    color: "blue",
+  },
+];
 
 const BabyManagement: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [selectedChild, setSelectedChild] = useState<any>(null);
-  const [parents, setParents] = useState<any[]>([]);
-  const [children, setChildren] = useState<any[]>([]);
+  const [selectedChild, setSelectedChild] = useState<Child | null>(null);
+  const [parents, setParents] = useState<Parent[]>([]);
+  const [children, setChildren] = useState<Child[]>([]);
   const [statusFilter, setStatusFilter] = useState("");
   const [genderFilter, setGenderFilter] = useState("");
-  const [formData, setFormData] = useState({
-    nama: "",
-    email: "",
-    no_hp: "",
+  const [availableRowId, setAvailableRowId] = useState<number | null>(null);
+
+  // Form tambah anak
+  const {
+    register,
+    handleSubmit, 
+    reset,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(childrenSchema),
+    defaultValues: {
+      nama: "",
+      tanggal_lahir: "",
+      gender: "",
+      umur: undefined,
+      id_orang_tua: "",
+    },
   });
 
   // 🔹 Ambil data dari Supabase
@@ -73,14 +101,14 @@ const BabyManagement: React.FC = () => {
     }
   };
 
-  useEffect(() => {
+ useEffect(() => {
     fetchParents();
+    fetchChildren();
   }, []);
 
+
   const fetchChildren = async () => {
-    const { data, error } = await supabase
-      .from("DataAnak")
-      .select(`
+    const { data, error } = await supabase.from("DataAnak").select(`
         *,
         id_orang_tua (
           nama_ayah,
@@ -95,47 +123,47 @@ const BabyManagement: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    fetchParents();
-    fetchChildren();
-  }, []);
-
-
-  // 🔹 Tambah data baru
-  const handleAddParent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const { error } = await supabase.from("DataOrangTua").insert([formData]);
+  
+  // Submit tambah anak
+  const onSubmitAddChild = async (data: z.infer<typeof childrenSchema>) => {
+    const payload = {
+      ...data,
+      id_orang_tua: Number(data.id_orang_tua)
+    }
+    if(!availableRowId) return toast.error("Tidak ada row id yang tersedia");
+    const { data: returned, error } = await supabase.from("DataAnak").update([payload]).eq("id", availableRowId).select();
     if (error) {
-      console.error("Error inserting parent:", error);
+      console.error("Error inserting child:", error);
     } else {
-      setShowAddModal(false);
-      setFormData({ nama: "", email: "", no_hp: "" });
-      fetchParents(); // refresh data
+      if(returned){
+        setShowAddModal(false);
+        reset();  
+        fetchChildren();
+        toast.success("Data Anak berhasil ditambahkan");
+      }
     }
   };
 
-  // 🔹 Filter pencarian
-  const filteredChildren = children.filter((child) => {
-    const term = searchTerm.toLowerCase();
+    // 🔹 Filter pencarian
+    const filteredChildren = children.filter((child) => {
+      const term = searchTerm.toLowerCase();
 
-    const matchSearch =
-      (child?.nama || "").toLowerCase().includes(term) ||
-      (child?.gender || "").toLowerCase().includes(term) ||
-      (child?.id_orang_tua?.nama_ayah || "").toLowerCase().includes(term) ||
-      (child?.id_orang_tua?.nama_ibu || "").toLowerCase().includes(term);
+      const matchSearch =
+        (child?.nama || "").toLowerCase().includes(term) ||
+        (child?.gender || "").toLowerCase().includes(term) ||
+        (typeof child.id_orang_tua === "object" && child.id_orang_tua !== null
+          ? ((child.id_orang_tua.nama_ayah || "") + (child.id_orang_tua.nama_ibu || "")).toLowerCase().includes(term)
+          : "");
 
-    const matchStatus =
-      !statusFilter || (child?.status || "") === statusFilter;
+      const matchStatus = !statusFilter || (child?.status || "") === statusFilter;
 
-    const matchGender =
-      !genderFilter || (child?.gender || "") === genderFilter;
+      const matchGender = !genderFilter || (child?.gender || "") === genderFilter;
 
-    return matchSearch && matchStatus && matchGender;
+      return matchSearch && matchStatus && matchGender;
   });
 
-
   // Buka modal hapus
-  const openDeleteModal = (child: any) => {
+  const openDeleteModal = (child: Child) => {
     setSelectedChild(child);
     setShowDeleteModal(true);
   };
@@ -154,30 +182,74 @@ const BabyManagement: React.FC = () => {
       console.error("Delete error:", error);
     } else {
       console.log("Delete success, status:", status); // 204
-      await fetchChildren();        // refresh UI
+      await fetchChildren(); // refresh UI
       setShowDeleteModal(false);
     }
   };
 
+  // const form = useFom
+
+  const openCreateBabyModal = async (open: boolean) => {
+    const { data, error } = await supabase
+    .from("DataAnak")
+    .select()
+    .is("id_orang_tua", null);
+
+    if(error){
+      toast.error("Gagal mendapatkan data anak kosong");  
+      console.error(error);
+      return
+    }
+    if (data && data.length > 0) {
+      setShowAddModal(open);
+      setAvailableRowId(data[0].id);
+    } else {
+      toast.error("Tidak ada data anak kosong");
+    }
+  };
+
+  const onError = (errors: unknown) => {
+    console.log(errors);
+  };
 
   return (
     <div className="space-y-6">
       <div className="px-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
         {stats.map((item) => (
-          <div key={item.name} className="bg-white relative glass pt-6 px-6 pb-6 shadow-modern rounded-2xl overflow-hidden hover:shadow-modern-lg transition-all hover:scale-[1.02] shadow-md">
+          <div
+            key={item.name}
+            className="bg-white relative glass pt-6 px-6 pb-6 shadow-modern rounded-2xl overflow-hidden hover:shadow-modern-lg transition-all hover:scale-[1.02] shadow-md"
+          >
             <dt>
-              <div className={`absolute bg-gradient-to-br from-${item.color}-500 to-${item.color}-600 rounded-xl p-3 shadow-modern`}>
+              <div
+                className={`absolute bg-gradient-to-br from-${item.color}-500 to-${item.color}-600 rounded-xl p-3 shadow-modern`}
+              >
                 <item.icon className="h-6 w-6 text-white" aria-hidden="true" />
               </div>
-              <p className="ml-16 text-sm font-semibold text-gray-500 truncate">{item.name}</p>
+              <p className="ml-16 text-sm font-semibold text-gray-500 truncate">
+                {item.name}
+              </p>
             </dt>
             <dd className="ml-16 pb-2 flex items-baseline">
               <p className="text-3xl font-bold text-gray-900">{item.stat}</p>
-              <p className={`ml-3 flex items-baseline text-sm font-semibold ${
-                item.changeType === 'increase' ? 'text-green-600' : 'text-red-600'
-              }`}>
-                <TrendingUp className="self-center flex-shrink-0 h-4 w-4 text-green-500 mr-1" aria-hidden="true" />
-                <span className="sr-only"> {item.changeType === 'increase' ? 'Increased' : 'Decreased'} by </span>
+              <p
+                className={`ml-3 flex items-baseline text-sm font-semibold ${
+                  item.changeType === "increase"
+                    ? "text-green-600"
+                    : "text-red-600"
+                }`}
+              >
+                <TrendingUp
+                  className="self-center flex-shrink-0 h-4 w-4 text-green-500 mr-1"
+                  aria-hidden="true"
+                />
+                <span className="sr-only">
+                  {" "}
+                  {item.changeType === "increase"
+                    ? "Increased"
+                    : "Decreased"}{" "}
+                  by{" "}
+                </span>
                 {item.change}
               </p>
             </dd>
@@ -187,157 +259,169 @@ const BabyManagement: React.FC = () => {
 
       <div className="px-6">
         <div className="bg-white rounded-2xl shadow-md">
-            <div className="px-4 py-5 sm:p-6 w-full">
-              <h3 className="text-lg leading-6 font-bold text-gray-900 mb-6">
-                Pemeriksaan Terbaru
-              </h3>
+          <div className="px-4 py-5 sm:p-6 w-full">
+            <h3 className="text-lg leading-6 font-bold text-gray-900 mb-6">
+              Pemeriksaan Terbaru
+            </h3>
 
-              <div className="flex pb-4 flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div className="relative flex-1 max-w-md">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <Search className="h-5 w-5 text-gray-400" />
-                  </div>
-                  <input
-                    type="text"
-                    placeholder="Cari data anak..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
+            <div className="flex pb-4 flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+              <div className="relative flex-1 max-w-md">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Search className="h-5 w-5 text-gray-400" />
                 </div>
-
-                <div className="flex gap-4">
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium"
-                  >
-                    <option value="">Semua Status</option>
-                    <option value="Normal">Normal</option>
-                    <option value="Stunting">Stunting</option>
-                    <option value="Stunting Parah">Stunting Parah</option>
-                  </select>
-                  <select
-                    value={genderFilter}
-                    onChange={(e) => setGenderFilter(e.target.value)}
-                    className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium"
-                  >
-                    <option value="">Semua Gender</option>
-                    <option value="Laki-laki">Laki-laki</option>
-                    <option value="Perempuan">Perempuan</option>
-                  </select>
-                  <button
-                    onClick={() => setShowAddModal(true)}
-                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Tambah Data Anak
-                  </button>
-                </div>
-
+                <input
+                  type="text"
+                  placeholder="Cari data anak..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
               </div>
-              
-              <div className="overflow-x-auto w-full">
-                <table className="w-full min-w-full divide-y divide-gray-100">
-                  <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
-                    <tr>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Nama
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Orang Tua
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Usia
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Pengukuran Terakhir
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Status
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Pemeriksaan Terakhir
-                      </th>
-                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                        Aksi
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white/50 divide-y divide-gray-100">
-                    {filteredChildren.map((child) => (
-                      <tr onClick={() => navigate(`/babies/${child.id}`)} key={child.id} className="hover:cursor-pointer hover:bg-gray-100">
-                        <td className="px-6 py-4">
-                          <button
-                            onClick={() => navigate(`/childs/${child.id}`)}
-                            className="text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors text-left"
-                          >
-                            {child.nama}
-                          </button>
-                          <div className="text-sm text-muted-foreground flex items-center mt-1">
-                            {child.gender}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="space-y-1">
-                            <div className="flex items-center text-sm font-medium">
-                              <User className="h-3 w-3 mr-2" />
-                              {child.id_orang_tua?.nama_ayah || '-'}
-                            </div>
-                            <div className="flex items-center text-sm text-muted-foreground">
-                              <User className="h-3 w-3 mr-2" />
-                              {child.id_orang_tua?.nama_ibu || '-'}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div>
-                            <div className="text-sm font-medium">{child.umur} bulan</div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium">{ child.updated_at }</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex px-3 py-1 text-xs font-bold rounded-full ${
-                            child.status === 'Normal' 
-                              ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800'
-                              : child.status === 'Stunting'
-                              ? 'bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800'
-                              : 'bg-gradient-to-r from-red-100 to-rose-100 text-red-800'
-                              
-                          }`}>
-                            {child.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-sm font-medium text-muted-foreground">{child.created_at.slice(0, 10)}</div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="flex items-center justify-start gap-2">
-                            <button className="text-gray-600 p-2 rounded hover:text-white hover:bg-blue-400">
-                              <Eye className="h-4 w-4" />
-                            </button>
-                            <button className="text-gray-600 p-2 rounded hover:text-white hover:bg-blue-400">
-                              <Edit className="h-4 w-4" />
-                            </button>
-                            <button 
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openDeleteModal(child);
-                              }}
-                              className="text-red-600 p-2 rounded hover:text-white hover:bg-red-400"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+
+              <div className="flex gap-4">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium"
+                >
+                  <option value="">Semua Status</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Stunting">Stunting</option>
+                  <option value="Stunting Parah">Stunting Parah</option>
+                </select>
+                <select
+                  value={genderFilter}
+                  onChange={(e) => setGenderFilter(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium"
+                >
+                  <option value="">Semua Gender</option>
+                  <option value="Laki-laki">Laki-laki</option>
+                  <option value="Perempuan">Perempuan</option>
+                </select>
+                <button
+                  onClick={() => openCreateBabyModal(true)}
+                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Tambah Data Anak
+                </button>
               </div>
             </div>
+
+            <div className="overflow-x-auto w-full">
+              <table className="w-full min-w-full divide-y divide-gray-100">
+                <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Nama
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Orang Tua
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Usia
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Pengukuran Terakhir
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Status
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Pemeriksaan Terakhir
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Aksi
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white/50 divide-y divide-gray-100">
+                  {filteredChildren.map((child) => (
+                    <tr
+                      onClick={() => navigate(`/babies/${child.id}`)}
+                      key={child.id}
+                      className="hover:cursor-pointer hover:bg-gray-100"
+                    >
+                      <td className="px-6 py-4">
+                        <button
+                          onClick={() => navigate(`/childs/${child.id}`)}
+                          className="text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors text-left"
+                        >
+                          {child.nama}
+                        </button>
+                        <div className="text-sm text-muted-foreground flex items-center mt-1">
+                          {child.gender}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="space-y-1">
+                          <div className="flex items-center text-sm font-medium">
+                            <User className="h-3 w-3 mr-2" />
+                            {child.id_orang_tua?.nama_ayah ||
+                              child?.id_orang_tua?.nama_ibu ||
+                              "-"}
+                          </div>
+                          <div className="flex items-center text-sm text-muted-foreground">
+                            <User className="h-3 w-3 mr-2" />
+                            {child.id_orang_tua?.nama_ibu || "-"}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div>
+                          <div className="text-sm font-medium">
+                            {child.umur} bulan
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium">
+                          {child.updated_at}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`inline-flex px-3 py-1 text-xs font-bold rounded-full ${
+                            child.status === "Normal"
+                              ? "bg-gradient-to-r from-green-100 to-emerald-100 text-green-800"
+                              : child.status === "Stunting"
+                              ? "bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800"
+                              : "bg-gradient-to-r from-red-100 to-rose-100 text-red-800"
+                          }`}
+                        >
+                          {child.status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-muted-foreground">
+                          {child.created_at.slice(0, 10)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-start gap-2">
+                          <button className="text-gray-600 p-2 rounded hover:text-white hover:bg-blue-400">
+                            <Eye className="h-4 w-4" />
+                          </button>
+                          <button className="text-gray-600 p-2 rounded hover:text-white hover:bg-blue-400">
+                            <Edit className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openDeleteModal(child);
+                            }}
+                            className="text-red-600 p-2 rounded hover:text-white hover:bg-red-400"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -351,9 +435,11 @@ const BabyManagement: React.FC = () => {
       )}
 
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
           <div className="bg-white rounded-lg max-w-sm w-full p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Hapus Data</h3>
+            <h3 className="text-lg font-medium text-gray-900 mb-2">
+              Hapus Data
+            </h3>
             <p className="text-sm text-gray-600 mb-4">
               Apakah Anda yakin ingin menghapus data anak{" "}
               <strong>{selectedChild?.nama}</strong>?
@@ -377,39 +463,46 @@ const BabyManagement: React.FC = () => {
       )}
 
       {showAddModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-gray-600/50 flex items-center justify-center p-4 z-50 backdrop-blur-xs">
           <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-              Tambah Data Anak
-            </h3>
-            <form onSubmit={handleAddParent} className="space-y-4">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Tambah Data Anak</h3>
+            <form onSubmit={handleSubmit(onSubmitAddChild, onError)} className="space-y-4">
               <input
                 type="text"
                 placeholder="Nama Lengkap"
-                value={formData.nama}
-                onChange={(e) =>
-                  setFormData({ ...formData, nama: e.target.value })
-                }
+                {...register("nama")}
                 className="w-full px-3 py-2 border rounded-lg"
               />
+              {errors.nama && <p className="text-red-500 text-xs">{errors.nama.message}</p>}
               <input
-                type="email"
-                placeholder="Email"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
+                type="date"
+                placeholder="Tanggal Lahir"
+                {...register("tanggal_lahir")}
                 className="w-full px-3 py-2 border rounded-lg"
               />
+              {errors.tanggal_lahir && <p className="text-red-500 text-xs">{errors.tanggal_lahir.message}</p>}
+              <select {...register("gender")} className="w-full px-3 py-2 border rounded-lg">
+                <option value="">Pilih Gender</option>
+                <option value="Laki-laki">Laki-laki</option>
+                <option value="Perempuan">Perempuan</option>
+              </select>
+              {errors.gender && <p className="text-red-500 text-xs">{errors.gender.message}</p>}
               <input
-                type="tel"
-                placeholder="Nomor Telepon"
-                value={formData.no_hp}
-                onChange={(e) =>
-                  setFormData({ ...formData, no_hp: e.target.value })
-                }
+                type="number"
+                placeholder="Umur (optional)"
+                {...register("umur", { valueAsNumber: true })}
                 className="w-full px-3 py-2 border rounded-lg"
               />
+              {errors.umur && <p className="text-red-500 text-xs">{errors.umur.message}</p>}
+              <select {...register("id_orang_tua")} className="w-full px-3 py-2 border rounded-lg">
+                <option value="">Pilih Orang Tua</option>
+                {parents.map((parent) => (
+                  <option key={parent.id} value={parent.id}>
+                    {parent.nama_ayah} & {parent.nama_ibu}
+                  </option>
+                ))}
+              </select>
+              {errors.id_orang_tua && <p className="text-red-500 text-xs">{errors.id_orang_tua.message}</p>}
               <div className="flex justify-end space-x-3 pt-4">
                 <button
                   type="button"
