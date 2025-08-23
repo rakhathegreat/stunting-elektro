@@ -14,7 +14,7 @@ import type { Child } from "../types/children";
 import type { Parent } from "../types/parent";
 import { useForm } from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
-import { childrenSchema } from "../schems/children";
+import { childrenSchema } from "../schemas/children";
 import { z } from "zod"
 import { toast } from "sonner"
 
@@ -109,7 +109,7 @@ const BabyManagement: React.FC = () => {
   const fetchChildren = async () => {
     const { data, error } = await supabase.from("DataAnak").select(`
         *,
-        id_orang_tua (
+        DataOrangTua (
           nama_ayah,
           nama_ibu
         )
@@ -150,15 +150,16 @@ const BabyManagement: React.FC = () => {
       const matchSearch =
         (child?.nama || "").toLowerCase().includes(term) ||
         (child?.gender || "").toLowerCase().includes(term) ||
-        (typeof child.id_orang_tua === "object" && child.id_orang_tua !== null
-          ? ((child.id_orang_tua.nama_ayah || "") + (child.id_orang_tua.nama_ibu || "")).toLowerCase().includes(term)
+        (typeof child.DataOrangTua === "object" && child.DataOrangTua !== null
+          ? ((child.DataOrangTua.nama_ayah || "") + (child.DataOrangTua.nama_ibu || "")).toLowerCase().includes(term)
           : "");
 
-      const matchStatus = !statusFilter || (child?.status_berat || "") === statusFilter;
+      const matchStatusTinggi = !statusFilter || (child?.status_tinggi || "") === statusFilter;
+      const matchStatusBerat = !statusFilter || (child?.status_berat || "") === statusFilter;
 
       const matchGender = !genderFilter || (child?.gender || "") === genderFilter;
 
-      return matchSearch && matchStatus && matchGender;
+      return matchSearch && matchStatusTinggi && matchStatusBerat && matchGender;
   });
 
   // Buka modal hapus
@@ -203,7 +204,7 @@ const BabyManagement: React.FC = () => {
       setShowAddModal(open);
       setAvailableRowId(data[0].id);
     } else {
-      toast.error("Tidak ada data anak kosong");
+      toast.error("Tidak ada kartu periksa baru yang tersedia");
     }
   };
 
@@ -359,13 +360,13 @@ const BabyManagement: React.FC = () => {
                         <div className="space-y-1">
                           <div className="flex items-center text-sm font-medium">
                             <User className="h-3 w-3 mr-2" />
-                            {child.id_orang_tua?.nama_ayah ||
-                              child?.id_orang_tua?.nama_ibu ||
+                            {child.DataOrangTua?.nama_ayah ||
+                              child?.DataOrangTua?.nama_ibu ||
                               "-"}
                           </div>
                           <div className="flex items-center text-sm text-muted-foreground">
                             <User className="h-3 w-3 mr-2" />
-                            {child.id_orang_tua?.nama_ibu || "-"}
+                            {child.DataOrangTua?.nama_ibu || "-"}
                           </div>
                         </div>
                       </td>
@@ -400,6 +401,19 @@ const BabyManagement: React.FC = () => {
                           }`}
                         >
                           {child.status_berat}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`inline-flex px-3 py-1 text-xs font-bold rounded-full ${
+                            child.status_tinggi === "Normal"
+                              ? "bg-gradient-to-r from-green-100 to-emerald-100 text-green-800"
+                              : child.status_tinggi === "Stunting"
+                              ? "bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800"
+                              : "bg-gradient-to-r from-red-100 to-rose-100 text-red-800"
+                          }`}
+                        >
+                          {child.status_tinggi}
                         </span>
                       </td>
                       <td className="px-6 py-4">
@@ -534,6 +548,8 @@ const BabyManagement: React.FC = () => {
           </div>
         </div>
       )}
+
+      
     </div>
   );
 };
