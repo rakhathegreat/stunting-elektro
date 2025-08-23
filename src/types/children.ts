@@ -12,3 +12,12 @@ export interface Child {
     id_orang_tua?: Parent;
     created_at: string;
 }
+
+export interface EditChildProps {
+    nama: string;
+    tanggal_lahir: string;
+    gender: string;
+    umur: number;
+    status: string;
+    id_orang_tua: string;
+}

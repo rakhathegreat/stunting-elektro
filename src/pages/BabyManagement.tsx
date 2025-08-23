@@ -15,7 +15,7 @@ import type { Child } from "../types/children";
 import type { Parent } from "../types/parent";
 import { useForm } from "react-hook-form";
 import {zodResolver} from "@hookform/resolvers/zod";
-import { childrenSchema } from "../schems/children";
+import { childrenSchema } from "../schemas/children";
 import { z } from "zod"
 import { toast } from "sonner"
 
@@ -522,6 +522,8 @@ const BabyManagement: React.FC = () => {
           </div>
         </div>
       )}
+
+      
     </div>
   );
 };

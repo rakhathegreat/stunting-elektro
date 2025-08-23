@@ -14,6 +14,7 @@ import {
 import type { Child } from '../types/children';
 import type { GrowthRecord } from '../types/growth';
 import {supabase} from '../supabaseClient';
+import BabyData from './baby/components/baby-data';
 
 const BabyDetail: React.FC = () => {
   const { id } = useParams();
@@ -32,6 +33,8 @@ const BabyDetail: React.FC = () => {
       console.error('Error fetching baby:', error);
       return null;
     }
+
+    console.log(data)
 
     return data;
   }
@@ -93,6 +96,7 @@ const BabyDetail: React.FC = () => {
     { id: 'overview', name: 'Overview', icon: Activity },
     { id: 'growth', name: 'Grafik Pertumbuhan', icon: TrendingUp },
     { id: 'examinations', name: 'Riwayat Pemeriksaan', icon: FileText },
+    { id: 'babydata', name: 'Data Bayi', icon: Ruler }
   ];
 
   const getGrowthTrend = (current: number, previous: number) => {
@@ -108,7 +112,10 @@ const BabyDetail: React.FC = () => {
   const latestGrowth = growthData[0];
   const previousGrowth = growthData[1];
   const heightTrend = getGrowthTrend(latestGrowth.height, previousGrowth.height);
-  // const weightTrend = getGrowthTrend(latestGrowth.weight, previousGrowth.weight);
+
+  const updateBaby = (id: string) => {
+    fetchBabyById(id).then(setBaby);
+  };
 
   return (
     <div className="grid grid-cols-4 grid-rows-1 gap-4 px-6 h-[calc(75vh)]">
@@ -117,7 +124,7 @@ const BabyDetail: React.FC = () => {
             <div className='flex justify-center'>
               <div className='w-42 h-42 bg-gray-500 rounded-full'>
               </div>
-            </div>  
+            </div> 
 
             <div className='flex flex-col items-center gap-1'>
               <h3 className="text-xl font-bold text-gray-900">{baby?.nama}</h3>
@@ -378,6 +385,10 @@ const BabyDetail: React.FC = () => {
               </div> */}
             </div>
           )}
+
+          {
+            activeTab === 'babydata' && (<BabyData child={baby as Child} updateBaby={updateBaby} />)
+          }
 
         </div>
 
