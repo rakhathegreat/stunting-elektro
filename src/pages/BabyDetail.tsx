@@ -32,7 +32,7 @@ const BabyDetail: React.FC = () => {
     // 1) data anak + ortu
     const { data: baby, error: babyError } = await supabase
       .from("DataAnak")
-      .select("*, id_orang_tua(nama_ayah, nama_ibu)")
+      .select("*, id_orang_tua(id, nama_ayah, nama_ibu)")
       .eq("id", id)
       .single();
 
@@ -445,7 +445,7 @@ const BabyDetail: React.FC = () => {
                               Pemeriksaan ke-{i + 1}
                             </h4>
                             <p className="text-sm text-gray-600 font-medium">
-                              {new Date(exam.date).toLocaleDateString("id-ID")}
+                              {new Date(exam.created_at).toLocaleDateString("id-ID")}
                             </p>
                           </div>
                           <span
