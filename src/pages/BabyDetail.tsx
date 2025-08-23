@@ -23,6 +23,7 @@ const BabyDetail: React.FC = () => {
   const [children, setChildren] = useState<Child | null>(null);
   const [growthData, setGrowthData] = useState<GrowthRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<any>('tinggi');
 
   /* ---------- fetch data bayi ---------- */
   const fetchChildren = async () => {
@@ -223,21 +224,21 @@ const BabyDetail: React.FC = () => {
 
         <div className="p-6">
           {/* ---------- Overview ---------- */}
-          {activeTab === "overview" && (
-            <div className="space-y-2">
+          {activeTab === 'overview' && (
+            <div className='w-full'>
               {/* Status Card */}
-              <div className="grid grid-cols-2 gap-3">
+              <div className='grid grid-cols-2 gap-4'>
                 <div
                   className={`p-4 rounded-2xl border-2 shadow-lg ${
-                    children.status_tinggi === "Normal"
-                      ? "bg-gradient-to-br from-green-50 to-emerald-50 border-green-200"
-                      : children.status_tinggi === "stunting"
-                      ? "bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200"
-                      : "bg-gradient-to-br from-red-50 to-pink-50 border-red-200"
+                    children.status_tinggi === 'Normal'
+                      ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200'
+                      : children.status === 'Pendek'
+                      ? 'bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200'
+                      : 'bg-gradient-to-br from-red-50 to-pink-50 border-red-200'
                   }`}
                 >
                   <div className="flex items-center space-x-6">
-                    {children.status_tinggi === "Normal" ? (
+                    {children.status_berat === 'Normal' ? ( 
                       <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-4">
                         <CheckCircle className="h-5 w-5 text-white" />
                       </div>
@@ -247,33 +248,27 @@ const BabyDetail: React.FC = () => {
                       </div>
                     )}
                     <div>
-                      <h3 className="text-xl font-bold text-gray-900">
-                        Status Tinggi: {children.status_tinggi}
-                      </h3>
+                      <h3 className="text-xl font-bold text-gray-900">Status Tinggi: {children.status_tinggi}</h3>
                       <p className="text-sm text-gray-600 mt-1">
                         Berdasarkan pemeriksaan terakhir (
                         {latestGrowth.created_at
-                          ? new Date(
-                              latestGrowth.created_at
-                            ).toLocaleDateString("id-ID")
-                          : "-"}
-                        )
+                          ? new Date(latestGrowth.created_at).toLocaleDateString('id-ID')
+                          : '-'})
                       </p>
                     </div>
                   </div>
                 </div>
-
                 <div
                   className={`p-4 rounded-2xl border-2 shadow-lg ${
-                    children.status_berat === "Normal"
-                      ? "bg-gradient-to-br from-green-50 to-emerald-50 border-green-200"
-                      : children.status_berat === "stunting"
-                      ? "bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200"
-                      : "bg-gradient-to-br from-red-50 to-pink-50 border-red-200"
+                    children.status_berat === 'Normal'
+                      ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200'
+                      : children.status === 'Kurus'
+                      ? 'bg-gradient-to-br from-yellow-50 to-orange-50 border-yellow-200'
+                      : 'bg-gradient-to-br from-red-50 to-pink-50 border-red-200'
                   }`}
                 >
                   <div className="flex items-center space-x-6">
-                    {children.status_berat === "Normal" ? (
+                    {children.status_berat === 'Normal' ? (
                       <div className="bg-gradient-to-br from-green-500 to-emerald-600 rounded-2xl p-4">
                         <CheckCircle className="h-5 w-5 text-white" />
                       </div>
@@ -283,17 +278,12 @@ const BabyDetail: React.FC = () => {
                       </div>
                     )}
                     <div>
-                      <h3 className="text-xl font-bold text-gray-900">
-                        Status Berat: {children.status_berat}
-                      </h3>
+                      <h3 className="text-xl font-bold text-gray-900">Status Berat: {children.status_berat}</h3>
                       <p className="text-sm text-gray-600 mt-1">
                         Berdasarkan pemeriksaan terakhir (
                         {latestGrowth.created_at
-                          ? new Date(
-                              latestGrowth.created_at
-                            ).toLocaleDateString("id-ID")
-                          : "-"}
-                        )
+                          ? new Date(latestGrowth.created_at).toLocaleDateString('id-ID')
+                          : '-'})
                       </p>
                     </div>
                   </div>
@@ -405,61 +395,58 @@ const BabyDetail: React.FC = () => {
           )}
 
           {/* ---------- Growth Chart ---------- */}
-          {activeTab === "growth" && (
-            <div className="space-y-8">
-              <h3 className="text-xl font-bold text-gray-900">
-                Grafik Pertumbuhan
-              </h3>
-              <div className="p-12 text-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl">
-                <div className="bg-blue-500 rounded-2xl p-6 inline-block mb-6">
-                  <TrendingUp className="h-12 w-12 text-white" />
-                </div>
-                <p className="text-gray-600 mb-4 font-medium text-lg">
-                  Grafik pertumbuhan akan ditampilkan di sini
-                </p>
-                <p className="text-sm text-gray-500">
-                  Integrasi dengan library chart seperti Chart.js atau Recharts
-                </p>
-              </div>
+          {activeTab === 'growth' && (
+      <div className="space-y-6">
+        <div className='flex items-center justify-between'>
+          <h3 className="text-xl font-bold text-gray-900">Grafik Pertumbuhan</h3>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="p-6 bg-blue-50 border border-blue-200 rounded-2xl">
-                  <h4 className="font-bold text-gray-900 mb-4 text-lg">
-                    Tinggi Badan
-                  </h4>
-                  <div className="space-y-3">
-                    {growthData.slice(0, 3).map((g, i) => (
-                      <div key={i} className="flex justify-between text-sm">
-                        <span className="text-gray-600 font-medium">
-                          {new Date(g.date).toLocaleDateString("id-ID")}
-                        </span>
-                        <span className="font-bold text-blue-900">
-                          {g.tinggi} cm
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                <div className="p-6 bg-green-50 border border-green-200 rounded-2xl">
-                  <h4 className="font-bold text-gray-900 mb-4 text-lg">
-                    Berat Badan
-                  </h4>
-                  <div className="space-y-3">
-                    {growthData.slice(0, 3).map((g, i) => (
-                      <div key={i} className="flex justify-between text-sm">
-                        <span className="text-gray-600 font-medium">
-                          {new Date(g.date).toLocaleDateString("id-ID")}
-                        </span>
-                        <span className="font-bold text-green-900">
-                          {g.berat} kg
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+          {/* Toggle Button */}
+          <div className='border border-gray-200 p-1 rounded-lg flex items-center'>
+            <button
+              className={`font-medium px-8 py-2 rounded-lg transition-colors duration-200 hover:cursor-pointer ${
+                selected === 'tinggi' ? 'bg-blue-600 text-white' : 'text-gray-400'
+              }`}
+              onClick={() => setSelected('tinggi')}
+            >
+              Tinggi
+            </button>
+            <button
+              className={`font-medium px-8 py-2 rounded-lg transition-colors duration-200 hover:cursor-pointer ${
+                selected === 'berat' ? 'bg-blue-600 text-white' : 'text-gray-300'
+              }`}
+              onClick={() => setSelected('berat')}
+            >
+              Berat
+            </button>
+          </div>
+        </div>
+
+        {growthData.length === 0 ? (
+          <div className="p-12 text-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl">
+            <div className="bg-blue-500 rounded-2xl p-6 inline-block mb-6">
+              <TrendingUp className="h-12 w-12 text-white" />
             </div>
-          )}
+            <p className="text-gray-600 mb-4 font-medium text-lg">
+              Grafik pertumbuhan akan ditampilkan di sini
+            </p>
+            <p className="text-sm text-gray-500">
+              Belum ada data pemeriksaan untuk ditampilkan.
+            </p>
+          </div>
+        ) : (
+          <>
+            {/* CHART */}
+            {selected === 'tinggi' ? (
+              <GrowthChart type="height" gender={children.gender} id={children.id} />
+            ) : (
+              <GrowthChart type="weight" gender={children.gender} id={children.id} />
+            )}
+          </>
+        )}
+      </div>
+    )}
+
+    {/* TABS */}
 
           {/* ---------- Examinations ---------- */}
           {activeTab === "examinations" && (
@@ -482,9 +469,7 @@ const BabyDetail: React.FC = () => {
                             Pemeriksaan ke-{i + 1}
                           </h4>
                           <p className="text-sm text-gray-600 font-medium">
-                            {new Date(exam.created_at).toLocaleDateString(
-                              "id-ID"
-                            )}
+                            {new Date(exam.created_at).toLocaleDateString('id-ID')}
                           </p>
                         </div>
                         <span
@@ -502,20 +487,12 @@ const BabyDetail: React.FC = () => {
 
                       <div className="grid grid-cols-2 gap-4">
                         <div className="text-center p-4 bg-blue-50 rounded-xl">
-                          <p className="text-sm text-gray-600 font-semibold">
-                            Tinggi
-                          </p>
-                          <p className="font-bold text-blue-900 text-xl">
-                            {exam.tinggi} cm
-                          </p>
+                          <p className="text-sm text-gray-600 font-semibold">Tinggi</p>
+                          <p className="font-bold text-blue-900 text-xl">{exam.tinggi} cm</p>
                         </div>
                         <div className="text-center p-4 bg-green-50 rounded-xl">
-                          <p className="text-sm text-gray-600 font-semibold">
-                            Berat
-                          </p>
-                          <p className="font-bold text-green-900 text-xl">
-                            {exam.berat} kg
-                          </p>
+                          <p className="text-sm text-gray-600 font-semibold">Berat</p>
+                          <p className="font-bold text-green-900 text-xl">{exam.berat} kg</p>
                         </div>
                         {exam.lingkarKepala && (
                           <div className="text-center p-4 bg-purple-50 rounded-xl">

@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import ParentData from "../components/parent/parent-data-form";
 
 const ParentDetail: React.FC = () => {
-  const { id } = useParams();
+  // const { id } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("info");
   const [parent, setParent] = useState<Parent | null>(null);

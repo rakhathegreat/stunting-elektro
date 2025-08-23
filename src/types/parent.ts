@@ -9,9 +9,10 @@ export interface Parent {
     email: string;
     alamat: string;
     status_aktif: string;
-    kunjungan_terakhir: Date;
+    kunjungan_terakhir: string;
     pekerjaan: string;
     pendidikan: string;
-    
+    notes: string;
+    tanggal_lahir: string;
 
 }

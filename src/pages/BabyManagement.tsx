@@ -6,7 +6,6 @@ import {
   User,
   Users,
   TrendingUp,
-  Eye,
   Edit,
   Trash2,
 } from "lucide-react";
@@ -323,16 +322,16 @@ const BabyManagement: React.FC = () => {
                       Usia
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Status Tinggi
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Status Berat
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                       Pengukuran Terakhir
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Berat
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Tinggi
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Pemeriksaan Terakhir
+                      Terdaftar Sejak
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                       Aksi
@@ -378,10 +377,18 @@ const BabyManagement: React.FC = () => {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium">
-                          {child.updated_at}
-                        </div>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span
+                          className={`inline-flex px-3 py-1 text-xs font-bold rounded-full ${
+                            child.status_tinggi === "Normal"
+                              ? "bg-gradient-to-r from-green-100 to-emerald-100 text-green-800"
+                              : child.status_tinggi === "Stunting"
+                              ? "bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800"
+                              : "bg-gradient-to-r from-red-100 to-rose-100 text-red-800"
+                          }`}
+                        >
+                          {child.status_berat}
+                        </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <span
@@ -410,15 +417,17 @@ const BabyManagement: React.FC = () => {
                         </span>
                       </td>
                       <td className="px-6 py-4">
+                        <div className="text-sm font-medium">
+                          {child.updated_at}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
                         <div className="text-sm font-medium text-muted-foreground">
                           {child.created_at.slice(0, 10)}
                         </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-start gap-2">
-                          <button className="text-gray-600 p-2 rounded hover:text-white hover:bg-blue-400">
-                            <Eye className="h-4 w-4" />
-                          </button>
                           <button className="text-gray-600 p-2 rounded hover:text-white hover:bg-blue-400">
                             <Edit className="h-4 w-4" />
                           </button>

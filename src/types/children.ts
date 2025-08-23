@@ -2,6 +2,8 @@
 import type {Parent} from "./parent"
 
 export interface Child {
+    status_tinggi: string;
+    status_berat: string;
     id?: number;
     nama: string;
     tanggal_lahir: string;
