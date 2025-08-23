@@ -3,7 +3,6 @@ import type {Parent} from "./parent"
 
 export interface Child {
     status_tinggi: string;
-    status_tinggi: string;
     status_berat: string;
     id?: number;
     nama: string;
@@ -11,7 +10,7 @@ export interface Child {
     gender: string;
     umur: number;
     updated_at: string;
-    status: string;
     id_orang_tua?: Parent;
     created_at: string;
+    lastExamination: string;
 }

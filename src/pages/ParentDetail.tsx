@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { 
   ArrowLeft, 
   Edit, 
@@ -16,50 +16,53 @@ import type { Parent } from "../types/parent";
 import type { Child } from "../types/children";
 
 const ParentDetail: React.FC = () => {
-  const { id } = useParams();
+  // const { id } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('info');
 
   // Mock data - in real app, fetch based on ID
   const parent: Parent = {
     id: 1,
-    name: 'Ibu Sari Dewi',
-    email: 'sari.dewi@email.com',
-    phone: '08123456789',
-    address: 'Jl. Melati No. 15, Jakarta Selatan 12560',
-    dateOfBirth: '1990-05-15',
-    occupation: 'Ibu Rumah Tangga',
-    education: 'SMA',
-    registrationDate: '2023-06-15',
-    lastVisit: '2024-01-15',
-    notes: 'Orang tua yang kooperatif dan peduli dengan kesehatan anak. Selalu datang tepat waktu untuk pemeriksaan rutin.',
-    emergencyContact: {
-      name: 'Bapak Ahmad Dewi',
-      phone: '08198765432',
-      relation: 'Suami'
-    }
+    nama_ayah: 'Andi Pratama',
+    nama_ibu: 'Sari Dewi Jr.',
+    tanggal_lahir_ayah: new Date('2022-11-15'),
+    tanggal_lahir_ibu: new Date('2022-07-20'),
+    no_hp: '08123456789',
+    email: '3k3lG@example.com',
+    alamat: 'Jl. Contoh No. 123, Kota Contoh',
+    pekerjaan: 'Pekerjaan Contoh',
+    pendidikan: 'SMA Contoh',
+    status_aktif: 'Aktif',
+    kunjungan_terakhir: '2024-01-15',
+    notes: 'Catatan Orang Tua',
+    tanggal_lahir: '2022-11-15',
+    created_at: '2023-11-15'
   };
 
   const children: Child[] = [
     {
       id: 1,
-      name: 'Andi Pratama',
+      nama: 'Andi Pratama',
       gender: 'Laki-laki',
-      birthDate: '2022-11-15',
-      age: '14 bulan',
-      lastStatus: 'Normal',
-      statusColor: 'green',
-      lastExamination: '2024-01-15'
+      tanggal_lahir: '2022-11-15',
+      umur: 12,
+      status_berat: 'normal',
+      status_tinggi: 'normal',
+      lastExamination: '2024-01-15',
+      updated_at: '2023-12-15',
+      created_at: '2023-11-15'
     },
     {
       id: 2,
-      name: 'Sari Dewi Jr.',
+      nama: 'Sari Dewi Jr.',
       gender: 'Perempuan',
-      birthDate: '2022-07-20',
-      age: '18 bulan',
-      lastStatus: 'Risiko Stunting',
-      statusColor: 'yellow',
-      lastExamination: '2024-01-15'
+      tanggal_lahir: '2022-07-20',
+      umur: 18,
+      status_berat: 'normal',
+      status_tinggi: 'normal',
+      lastExamination: '2024-01-15',
+      updated_at: '2023-12-15',
+      created_at: '2023-11-15'
     }
   ];
 
@@ -103,7 +106,7 @@ const ParentDetail: React.FC = () => {
             <ArrowLeft className="h-5 w-5" />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">{parent.name}</h1>
+            <h1 className="text-2xl font-bold text-gray-900">{parent.nama_ayah}</h1>
             <p className="text-gray-600">Detail Orang Tua</p>
           </div>
         </div>
@@ -121,7 +124,7 @@ const ParentDetail: React.FC = () => {
         </div>
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
           <p className="text-sm text-gray-600">Kunjungan Terakhir</p>
-          <p className="text-lg font-semibold text-gray-900">{parent.lastVisit}</p>
+          <p className="text-lg font-semibold text-gray-900">{parent.kunjungan_terakhir}</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
           <p className="text-sm text-gray-600">Total Kunjungan</p>
@@ -172,14 +175,14 @@ const ParentDetail: React.FC = () => {
                     <Phone className="h-5 w-5 text-gray-400" />
                     <div>
                       <p className="text-sm text-gray-600">Nomor Telepon</p>
-                      <p className="font-medium">{parent.phone}</p>
+                      <p className="font-medium">{parent.no_hp}</p>
                     </div>
                   </div>
                   <div className="flex items-start space-x-3">
                     <MapPin className="h-5 w-5 text-gray-400 mt-1" />
                     <div>
                       <p className="text-sm text-gray-600">Alamat</p>
-                      <p className="font-medium">{parent.address}</p>
+                      <p className="font-medium">{parent.alamat}</p>
                     </div>
                   </div>
                 </div>
@@ -192,21 +195,21 @@ const ParentDetail: React.FC = () => {
                     <Calendar className="h-5 w-5 text-gray-400" />
                     <div>
                       <p className="text-sm text-gray-600">Tanggal Lahir</p>
-                      <p className="font-medium">{parent.dateOfBirth}</p>
+                      <p className="font-medium">{parent.tanggal_lahir}</p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-3">
                     <User className="h-5 w-5 text-gray-400" />
                     <div>
                       <p className="text-sm text-gray-600">Pekerjaan</p>
-                      <p className="font-medium">{parent.occupation}</p>
+                      <p className="font-medium">{parent.pekerjaan}</p>
                     </div>
                   </div>
                   <div className="flex items-center space-x-3">
                     <FileText className="h-5 w-5 text-gray-400" />
                     <div>
                       <p className="text-sm text-gray-600">Pendidikan</p>
-                      <p className="font-medium">{parent.education}</p>
+                      <p className="font-medium">{parent.pendidikan}</p>
                     </div>
                   </div>
                 </div>
@@ -216,15 +219,15 @@ const ParentDetail: React.FC = () => {
                   <div className="space-y-2">
                     <p className="text-sm">
                       <span className="text-gray-600">Nama:</span> 
-                      <span className="font-medium ml-2">{parent.emergencyContact.name}</span>
+                      <span className="font-medium ml-2">-</span>
                     </p>
                     <p className="text-sm">
                       <span className="text-gray-600">Telepon:</span> 
-                      <span className="font-medium ml-2">{parent.emergencyContact.phone}</span>
+                      <span className="font-medium ml-2">-</span>
                     </p>
                     <p className="text-sm">
                       <span className="text-gray-600">Hubungan:</span> 
-                      <span className="font-medium ml-2">{parent.emergencyContact.relation}</span>
+                      <span className="font-medium ml-2">-</span>
                     </p>
                   </div>
                 </div>
@@ -241,21 +244,21 @@ const ParentDetail: React.FC = () => {
                   <div key={child.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <h4 className="font-medium text-gray-900">{child.name}</h4>
-                        <p className="text-sm text-gray-600">{child.age} • {child.gender}</p>
+                        <h4 className="font-medium text-gray-900">{child.nama}</h4>
+                        <p className="text-sm text-gray-600">{child.umur} • {child.gender}</p>
                       </div>
                       <span className={`px-2 py-1 text-xs font-medium rounded-full ${
-                        child.statusColor === 'green' 
+                        child.status_berat === 'green' 
                           ? 'bg-green-100 text-green-800'
-                          : child.statusColor === 'yellow'
+                          : child.status_berat === 'yellow'
                           ? 'bg-yellow-100 text-yellow-800'
                           : 'bg-red-100 text-red-800'
                       }`}>
-                        {child.lastStatus}
+                        {child.status_berat}
                       </span>
                     </div>
                     <div className="space-y-2 text-sm text-gray-600">
-                      <p>Lahir: {child.birthDate}</p>
+                      <p>Lahir: {child.tanggal_lahir}</p>
                       <p>Pemeriksaan terakhir: {child.lastExamination}</p>
                     </div>
                     <button 
@@ -310,7 +313,7 @@ const ParentDetail: React.FC = () => {
               </div>
               <div className="bg-gray-50 rounded-lg p-4">
                 <p className="text-gray-700">{parent.notes}</p>
-                <p className="text-xs text-gray-500 mt-2">Terakhir diperbarui: {parent.lastVisit}</p>
+                <p className="text-xs text-gray-500 mt-2">Terakhir diperbarui: {parent.kunjungan_terakhir}</p>
               </div>
             </div>
           )}

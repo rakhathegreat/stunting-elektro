@@ -6,7 +6,6 @@ import {
   User,
   Users,
   TrendingUp,
-  Eye,
   Edit,
   Trash2,
 } from "lucide-react";
@@ -155,7 +154,7 @@ const BabyManagement: React.FC = () => {
           ? ((child.id_orang_tua.nama_ayah || "") + (child.id_orang_tua.nama_ibu || "")).toLowerCase().includes(term)
           : "");
 
-      const matchStatus = !statusFilter || (child?.status || "") === statusFilter;
+      const matchStatus = !statusFilter || (child?.status_berat || "") === statusFilter;
 
       const matchGender = !genderFilter || (child?.gender || "") === genderFilter;
 
@@ -395,7 +394,7 @@ const BabyManagement: React.FC = () => {
                           className={`inline-flex px-3 py-1 text-xs font-bold rounded-full ${
                             child.status_berat === "Normal"
                               ? "bg-gradient-to-r from-green-100 to-emerald-100 text-green-800"
-                              : child.status === "Stunting"
+                              : child.status_berat === "Stunting"
                               ? "bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800"
                               : "bg-gradient-to-r from-red-100 to-rose-100 text-red-800"
                           }`}
