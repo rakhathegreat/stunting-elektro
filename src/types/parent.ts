@@ -1,19 +1,16 @@
 export interface Parent {
-    id: number;
-    nama_ayah?: string;
-    nama_ibu?: string;
+    id: number | string;
+    created_at: string;
+    nama_ayah: string;
+    nama_ibu: string;
+    tanggal_lahir_ayah: Date;
+    tanggal_lahir_ibu: Date;
+    no_hp: string;
     email: string;
-    phone: string;
-    address: string;
-    dateOfBirth: string;
-    occupation: string;
-    education: string;
-    registrationDate: string;
-    lastVisit: string;
-    notes: string;
-    emergencyContact: {
-        name: string;
-        phone: string;
-        relation: string;
-    };
+    alamat: string;
+    status_aktif: string;
+    kunjungan_terakhir: Date;
+    pekerjaan: string;
+    pendidikan: string;
+
 }

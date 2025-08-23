@@ -25,6 +25,7 @@ function AppRoutes() {
 
   // Jika sudah login, tampilkan dashboard & routes lain
   return (
+    <div className="pb-10">
     <Router>
       <Layout>
         <Routes>
@@ -37,6 +38,7 @@ function AppRoutes() {
         </Routes>
       </Layout>
     </Router>
+    </div>
   );
 }
 

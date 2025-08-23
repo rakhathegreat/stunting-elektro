@@ -13,6 +13,11 @@ import {
 import { supabase } from "../supabaseClient";
 import type { Child } from "../types/children";
 import type { Parent } from "../types/parent";
+import { useForm } from "react-hook-form";
+import {zodResolver} from "@hookform/resolvers/zod";
+import { childrenSchema } from "../schems/children";
+import { z } from "zod"
+import { toast } from "sonner"
 
 const stats = [
   {
@@ -63,14 +68,27 @@ const BabyManagement: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedChild, setSelectedChild] = useState<Child | null>(null);
-  const [parents, setParents] = useState<Parent[]>([]); //eslint-disable-line
+  const [parents, setParents] = useState<Parent[]>([]);
   const [children, setChildren] = useState<Child[]>([]);
   const [statusFilter, setStatusFilter] = useState("");
   const [genderFilter, setGenderFilter] = useState("");
-  const [formData, setFormData] = useState({
-    nama: "",
-    email: "",
-    no_hp: "",
+  const [availableRowId, setAvailableRowId] = useState<number | null>(null);
+
+  // Form tambah anak
+  const {
+    register,
+    handleSubmit, 
+    reset,
+    formState: { errors },
+  } = useForm({
+    resolver: zodResolver(childrenSchema),
+    defaultValues: {
+      nama: "",
+      tanggal_lahir: "",
+      gender: "",
+      umur: undefined,
+      id_orang_tua: "",
+    },
   });
 
   // 🔹 Ambil data dari Supabase
@@ -83,9 +101,11 @@ const BabyManagement: React.FC = () => {
     }
   };
 
-  useEffect(() => {
+ useEffect(() => {
     fetchParents();
+    fetchChildren();
   }, []);
+
 
   const fetchChildren = async () => {
     const { data, error } = await supabase.from("DataAnak").select(`
@@ -103,39 +123,43 @@ const BabyManagement: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    fetchParents();
-    fetchChildren();
-  }, []);
-
-  // 🔹 Tambah data baru
-  const handleAddParent = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const { error } = await supabase.from("DataOrangTua").insert([formData]);
+  
+  // Submit tambah anak
+  const onSubmitAddChild = async (data: z.infer<typeof childrenSchema>) => {
+    const payload = {
+      ...data,
+      id_orang_tua: Number(data.id_orang_tua)
+    }
+    if(!availableRowId) return toast.error("Tidak ada row id yang tersedia");
+    const { data: returned, error } = await supabase.from("DataAnak").update([payload]).eq("id", availableRowId).select();
     if (error) {
-      console.error("Error inserting parent:", error);
+      console.error("Error inserting child:", error);
     } else {
-      setShowAddModal(false);
-      setFormData({ nama: "", email: "", no_hp: "" });
-      fetchParents(); // refresh data
+      if(returned){
+        setShowAddModal(false);
+        reset();  
+        fetchChildren();
+        toast.success("Data Anak berhasil ditambahkan");
+      }
     }
   };
 
-  // 🔹 Filter pencarian
-  const filteredChildren = children.filter((child) => {
-    const term = searchTerm.toLowerCase();
+    // 🔹 Filter pencarian
+    const filteredChildren = children.filter((child) => {
+      const term = searchTerm.toLowerCase();
 
-    const matchSearch =
-      (child?.name || "").toLowerCase().includes(term) ||
-      (child?.gender || "").toLowerCase().includes(term) ||
-      (child?.id_orang_tua?.nama_ayah || "").toLowerCase().includes(term) ||
-      (child?.id_orang_tua?.nama_ibu || "").toLowerCase().includes(term);
+      const matchSearch =
+        (child?.nama || "").toLowerCase().includes(term) ||
+        (child?.gender || "").toLowerCase().includes(term) ||
+        (typeof child.id_orang_tua === "object" && child.id_orang_tua !== null
+          ? ((child.id_orang_tua.nama_ayah || "") + (child.id_orang_tua.nama_ibu || "")).toLowerCase().includes(term)
+          : "");
 
-    const matchStatus = !statusFilter || (child?.status || "") === statusFilter;
+      const matchStatus = !statusFilter || (child?.status || "") === statusFilter;
 
-    const matchGender = !genderFilter || (child?.gender || "") === genderFilter;
+      const matchGender = !genderFilter || (child?.gender || "") === genderFilter;
 
-    return matchSearch && matchStatus && matchGender;
+      return matchSearch && matchStatus && matchGender;
   });
 
   // Buka modal hapus
@@ -163,20 +187,29 @@ const BabyManagement: React.FC = () => {
     }
   };
 
+  // const form = useFom
+
   const openCreateBabyModal = async (open: boolean) => {
     const { data, error } = await supabase
     .from("DataAnak")
     .select()
     .is("id_orang_tua", null);
 
-
+    if(error){
+      toast.error("Gagal mendapatkan data anak kosong");  
+      console.error(error);
+      return
+    }
     if (data && data.length > 0) {
       setShowAddModal(open);
+      setAvailableRowId(data[0].id);
     } else {
-      if(error){
-        console.error(error)
-      }
+      toast.error("Tidak ada data anak kosong");
     }
+  };
+
+  const onError = (errors: unknown) => {
+    console.log(errors);
   };
 
   return (
@@ -314,7 +347,7 @@ const BabyManagement: React.FC = () => {
                           onClick={() => navigate(`/childs/${child.id}`)}
                           className="text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors text-left"
                         >
-                          {child.name}
+                          {child.nama}
                         </button>
                         <div className="text-sm text-muted-foreground flex items-center mt-1">
                           {child.gender}
@@ -325,7 +358,7 @@ const BabyManagement: React.FC = () => {
                           <div className="flex items-center text-sm font-medium">
                             <User className="h-3 w-3 mr-2" />
                             {child.id_orang_tua?.nama_ayah ||
-                              child?.parentName ||
+                              child?.id_orang_tua?.nama_ibu ||
                               "-"}
                           </div>
                           <div className="flex items-center text-sm text-muted-foreground">
@@ -337,7 +370,7 @@ const BabyManagement: React.FC = () => {
                       <td className="px-6 py-4">
                         <div>
                           <div className="text-sm font-medium">
-                            {child.age} bulan
+                            {child.umur} bulan
                           </div>
                         </div>
                       </td>
@@ -402,14 +435,14 @@ const BabyManagement: React.FC = () => {
       )}
 
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
           <div className="bg-white rounded-lg max-w-sm w-full p-6">
             <h3 className="text-lg font-medium text-gray-900 mb-2">
               Hapus Data
             </h3>
             <p className="text-sm text-gray-600 mb-4">
               Apakah Anda yakin ingin menghapus data anak{" "}
-              <strong>{selectedChild?.name}</strong>?
+              <strong>{selectedChild?.nama}</strong>?
             </p>
             <div className="flex justify-end space-x-3">
               <button
@@ -430,39 +463,46 @@ const BabyManagement: React.FC = () => {
       )}
 
       {showAddModal && (
-        <div className="fixed inset-0 bg-gray-600/50 bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-xs">
+        <div className="fixed inset-0 bg-gray-600/50 flex items-center justify-center p-4 z-50 backdrop-blur-xs">
           <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-              Tambah Data Anak
-            </h3>
-            <form onSubmit={handleAddParent} className="space-y-4">
+            <h3 className="text-lg font-medium text-gray-900 mb-4">Tambah Data Anak</h3>
+            <form onSubmit={handleSubmit(onSubmitAddChild, onError)} className="space-y-4">
               <input
                 type="text"
                 placeholder="Nama Lengkap"
-                value={formData.nama}
-                onChange={(e) =>
-                  setFormData({ ...formData, nama: e.target.value })
-                }
+                {...register("nama")}
                 className="w-full px-3 py-2 border rounded-lg"
               />
+              {errors.nama && <p className="text-red-500 text-xs">{errors.nama.message}</p>}
               <input
-                type="email"
-                placeholder="Email"
-                value={formData.email}
-                onChange={(e) =>
-                  setFormData({ ...formData, email: e.target.value })
-                }
+                type="date"
+                placeholder="Tanggal Lahir"
+                {...register("tanggal_lahir")}
                 className="w-full px-3 py-2 border rounded-lg"
               />
+              {errors.tanggal_lahir && <p className="text-red-500 text-xs">{errors.tanggal_lahir.message}</p>}
+              <select {...register("gender")} className="w-full px-3 py-2 border rounded-lg">
+                <option value="">Pilih Gender</option>
+                <option value="Laki-laki">Laki-laki</option>
+                <option value="Perempuan">Perempuan</option>
+              </select>
+              {errors.gender && <p className="text-red-500 text-xs">{errors.gender.message}</p>}
               <input
-                type="tel"
-                placeholder="Nomor Telepon"
-                value={formData.no_hp}
-                onChange={(e) =>
-                  setFormData({ ...formData, no_hp: e.target.value })
-                }
+                type="number"
+                placeholder="Umur (optional)"
+                {...register("umur", { valueAsNumber: true })}
                 className="w-full px-3 py-2 border rounded-lg"
               />
+              {errors.umur && <p className="text-red-500 text-xs">{errors.umur.message}</p>}
+              <select {...register("id_orang_tua")} className="w-full px-3 py-2 border rounded-lg">
+                <option value="">Pilih Orang Tua</option>
+                {parents.map((parent) => (
+                  <option key={parent.id} value={parent.id}>
+                    {parent.nama_ayah} & {parent.nama_ibu}
+                  </option>
+                ))}
+              </select>
+              {errors.id_orang_tua && <p className="text-red-500 text-xs">{errors.id_orang_tua.message}</p>}
               <div className="flex justify-end space-x-3 pt-4">
                 <button
                   type="button"

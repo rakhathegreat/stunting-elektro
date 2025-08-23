@@ -2,7 +2,8 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Plus, MapPin, Users, TrendingUp, Phone, Mail, Eye, Edit, Trash2 } from "lucide-react";
 import { supabase } from "../supabaseClient";
-
+import type { Parent } from "../types/parent";
+import type { Child } from "../types/children";
 
 const stats = [
     {
@@ -43,8 +44,8 @@ const ParentManagement: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [parents, setParents] = useState<any[]>([]);
-  const [children, setChildren] = useState<any[]>([]);
+  const [parents, setParents] = useState<Parent[]>([]);
+  const [children, setChildren] = useState<Child[]>([]);
   const [formData, setFormData] = useState({
     nama: "",
     email: "",
@@ -79,8 +80,8 @@ const ParentManagement: React.FC = () => {
     fetchChildren();
   }, []);
 
-  const getChildCount = (parentId: number) => {
-    return children.filter(child => child.id_orang_tua === parentId).length;
+  const getChildCount = (parentId: string) => {
+    return children.filter((child) => child?.id_orang_tua?.id === parentId).length;
   };
 
   // 🔹 Tambah data baru
@@ -222,7 +223,7 @@ const ParentManagement: React.FC = () => {
                           </div>
                         </td>
                         <td className="px-6 py-4">
-                          <div className="text-sm font-medium">{getChildCount(parent.id)} anak</div>
+                          <div className="text-sm font-medium">{getChildCount(parent?.id as string)} anak</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <span className={`inline-flex px-3 py-1 text-xs font-bold rounded-full ${
@@ -271,7 +272,7 @@ const ParentManagement: React.FC = () => {
 
       {/* Add Parent Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div className="fixed inset-0 bg-gray-600/50 backdrop-blur-xs bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg max-w-md w-full p-6">
             <h3 className="text-lg font-medium text-gray-900 mb-4">
               Tambah Orang Tua Baru

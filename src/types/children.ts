@@ -1,22 +1,14 @@
-import type { Vaccination } from "./vaccination";
+// import type { Vaccination } from "./vaccination";
 import type {Parent} from "./parent"
 
 export interface Child {
-    id: number;
-    name: string;
+    id?: number;
+    nama: string;
+    tanggal_lahir: string;
     gender: string;
-    birthDate: string;
-    age: string;
-    parentName?: string;
+    umur: number;
+    updated_at: string;
     status: string;
-    statusColor: string;
-    registrationDate: string;
-    birthWeight: number;
-    birthHeight: number;
-    notes: string;
-    allergies: string;
-    vaccinations: Vaccination[];
     id_orang_tua?: Parent;
     created_at: string;
-    updated_at: string;
 }
