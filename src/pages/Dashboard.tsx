@@ -73,10 +73,6 @@ const Dashboard: React.FC = () => {
   ];
 
     /* ------------- HANDLER ------------- */
-  const handleEditChild = (child: any) => {
-    setSelectedChild(child);
-    setShowEditModal(true);
-  };
 
   return (
     <div className="space-y-6">
