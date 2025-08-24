@@ -397,55 +397,55 @@ const BabyDetail: React.FC = () => {
 
           {/* ---------- Growth Chart ---------- */}
           {activeTab === 'growth' && (
-      <div className="space-y-6">
-        <div className='flex items-center justify-between'>
-          <h3 className="text-xl font-bold text-gray-900">Grafik Pertumbuhan</h3>
+            <div className="space-y-6">
+              <div className='flex items-center justify-between'>
+                <h3 className="text-xl font-bold text-gray-900">Grafik Pertumbuhan</h3>
 
-          {/* Toggle Button */}
-          <div className='border border-gray-200 p-1 rounded-lg flex items-center'>
-            <button
-              className={`font-medium px-8 py-2 rounded-lg transition-colors duration-200 hover:cursor-pointer ${
-                selected === 'tinggi' ? 'bg-blue-600 text-white' : 'text-gray-400'
-              }`}
-              onClick={() => setSelected('tinggi')}
-            >
-              Tinggi
-            </button>
-            <button
-              className={`font-medium px-8 py-2 rounded-lg transition-colors duration-200 hover:cursor-pointer ${
-                selected === 'berat' ? 'bg-blue-600 text-white' : 'text-gray-300'
-              }`}
-              onClick={() => setSelected('berat')}
-            >
-              Berat
-            </button>
-          </div>
-        </div>
+                {/* Toggle Button */}
+                <div className='border border-gray-200 p-1 rounded-lg flex items-center'>
+                  <button
+                    className={`font-medium px-8 py-2 rounded-lg transition-colors duration-200 hover:cursor-pointer ${
+                      selected === 'tinggi' ? 'bg-blue-600 text-white' : 'text-gray-400'
+                    }`}
+                    onClick={() => setSelected('tinggi')}
+                  >
+                    Tinggi
+                  </button>
+                  <button
+                    className={`font-medium px-8 py-2 rounded-lg transition-colors duration-200 hover:cursor-pointer ${
+                      selected === 'berat' ? 'bg-blue-600 text-white' : 'text-gray-300'
+                    }`}
+                    onClick={() => setSelected('berat')}
+                  >
+                    Berat
+                  </button>
+                </div>
+              </div>
 
-        {growthData.length === 0 ? (
-          <div className="p-12 text-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl">
-            <div className="bg-blue-500 rounded-2xl p-6 inline-block mb-6">
-              <TrendingUp className="h-12 w-12 text-white" />
+              {growthData.length === 0 ? (
+                <div className="p-12 text-center bg-gradient-to-br from-gray-50 to-gray-100 rounded-2xl">
+                  <div className="bg-blue-500 rounded-2xl p-6 inline-block mb-6">
+                    <TrendingUp className="h-12 w-12 text-white" />
+                  </div>
+                  <p className="text-gray-600 mb-4 font-medium text-lg">
+                    Grafik pertumbuhan akan ditampilkan di sini
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    Belum ada data pemeriksaan untuk ditampilkan.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {/* CHART */}
+                  {selected === 'tinggi' ? (
+                    <GrowthChart type="height" gender={children.gender} id={children.id} />
+                  ) : (
+                    <GrowthChart type="weight" gender={children.gender} id={children.id} />
+                  )}
+                </>
+              )}
             </div>
-            <p className="text-gray-600 mb-4 font-medium text-lg">
-              Grafik pertumbuhan akan ditampilkan di sini
-            </p>
-            <p className="text-sm text-gray-500">
-              Belum ada data pemeriksaan untuk ditampilkan.
-            </p>
-          </div>
-        ) : (
-          <>
-            {/* CHART */}
-            {selected === 'tinggi' ? (
-              <GrowthChart type="height" gender={children.gender} id={children.id} />
-            ) : (
-              <GrowthChart type="weight" gender={children.gender} id={children.id} />
-            )}
-          </>
-        )}
-      </div>
-    )}
+          )}
 
     {/* TABS */}
 
@@ -475,14 +475,14 @@ const BabyDetail: React.FC = () => {
                         </div>
                         <span
                           className={`px-4 py-2 text-sm font-bold rounded-full ${
-                            exam.status === "Normal"
+                            exam.status_berat === "Normal"
                               ? "bg-green-100 text-green-800"
                               : exam.status === "Stunting"
                               ? "bg-yellow-100 text-yellow-800"
                               : "bg-red-100 text-red-800"
                           }`}
                         >
-                          {exam.status}
+                          {exam.status_berat}
                         </span>
                       </div>
 

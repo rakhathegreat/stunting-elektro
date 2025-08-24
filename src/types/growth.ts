@@ -1,4 +1,5 @@
 export interface GrowthRecord {
+  status_berat: string;
 	date: string;
 	age: string;
 	tinggi: number;

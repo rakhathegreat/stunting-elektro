@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Users, Baby, Stethoscope, CheckCircle, TrendingUp } from 'lucide-react';
-import BarChart from '../components/BarChart';
-import Example from '../components/PieChart';
+import BarChart from '../components/Dashboard/BarChart';
+import Example from '../components/Dashboard/PieChart';
 import { supabase } from '../supabaseClient';
 
 interface PieData {
@@ -64,8 +64,6 @@ const Dashboard: React.FC = () => {
     fetchPieByGender();
   }, []);
 
-  console.log(maleHeight)
-
   /* ------------- STATS CARD ------------- */
   const stats = [
     { name: 'Total Orang Tua', stat: '127', icon: Users, change: '+12%', changeType: 'increase', color: 'blue' },
@@ -73,6 +71,12 @@ const Dashboard: React.FC = () => {
     { name: 'Pemeriksaan Bulan Ini', stat: '234', icon: Stethoscope, change: '+23%', changeType: 'increase', color: 'blue' },
     { name: 'Tingkat Stunting', stat: '78%', icon: CheckCircle, change: '+5%', changeType: 'increase', color: 'blue' },
   ];
+
+    /* ------------- HANDLER ------------- */
+  const handleEditChild = (child: any) => {
+    setSelectedChild(child);
+    setShowEditModal(true);
+  };
 
   return (
     <div className="space-y-6">

@@ -174,6 +174,9 @@ const ParentManagement: React.FC = () => {
                         Kontak
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                        Alamat
+                      </th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                         Pekerjaan
                       </th>
                       <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
@@ -200,10 +203,6 @@ const ParentManagement: React.FC = () => {
                           >
                             {parent.nama_ayah} & <br />{parent.nama_ibu}
                           </button>
-                          <div className="text-sm text-muted-foreground flex items-center mt-1">
-                            <MapPin className="h-3 w-3 mr-1" />
-                            {parent.alamat}
-                          </div>
                         </td>
                         <td className="px-6 py-4">
                           <div className="space-y-1">
@@ -215,6 +214,12 @@ const ParentManagement: React.FC = () => {
                               <Mail className="h-3 w-3 mr-2" />
                               {parent.email}
                             </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-muted-foreground flex items-center mt-1">
+                            <MapPin className="h-3 w-3 mr-1" />
+                            {parent.alamat}
                           </div>
                         </td>
                         <td className="px-6 py-4">

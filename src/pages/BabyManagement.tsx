@@ -17,6 +17,7 @@ import {zodResolver} from "@hookform/resolvers/zod";
 import { childrenSchema } from "../schemas/children";
 import { z } from "zod"
 import { toast } from "sonner"
+import EditModal from "../components/Dashboard/EditModal";
 
 const stats = [
   {
@@ -72,6 +73,7 @@ const BabyManagement: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState("");
   const [genderFilter, setGenderFilter] = useState("");
   const [availableRowId, setAvailableRowId] = useState<number | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
 
   // Form tambah anak
   const {
@@ -113,7 +115,7 @@ const BabyManagement: React.FC = () => {
           nama_ayah,
           nama_ibu
         )
-      `);
+      `).order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching children:", error);
@@ -143,23 +145,23 @@ const BabyManagement: React.FC = () => {
     }
   };
 
-    // 🔹 Filter pencarian
-    const filteredChildren = children.filter((child) => {
-      const term = searchTerm.toLowerCase();
+  // 🔹 Filter pencarian
+  const filteredChildren = children.filter((child) => {
+    const term = searchTerm.toLowerCase();
 
-      const matchSearch =
-        (child?.nama || "").toLowerCase().includes(term) ||
-        (child?.gender || "").toLowerCase().includes(term) ||
-        (typeof child.DataOrangTua === "object" && child.DataOrangTua !== null
-          ? ((child.DataOrangTua.nama_ayah || "") + (child.DataOrangTua.nama_ibu || "")).toLowerCase().includes(term)
-          : "");
+    const matchSearch =
+      (child?.nama || "").toLowerCase().includes(term) ||
+      (child?.gender || "").toLowerCase().includes(term) ||
+      (typeof child.DataOrangTua === "object" && child.DataOrangTua !== null
+        ? ((child.DataOrangTua.nama_ayah || "") + (child.DataOrangTua.nama_ibu || "")).toLowerCase().includes(term)
+        : "");
 
-      const matchStatusTinggi = !statusFilter || (child?.status_tinggi || "") === statusFilter;
-      const matchStatusBerat = !statusFilter || (child?.status_berat || "") === statusFilter;
+    const matchStatusTinggi = !statusFilter || (child?.status_tinggi || "") === statusFilter;
+    const matchStatusBerat = !statusFilter || (child?.status_berat || "") === statusFilter;
 
-      const matchGender = !genderFilter || (child?.gender || "") === genderFilter;
+    const matchGender = !genderFilter || (child?.gender || "") === genderFilter;
 
-      return matchSearch && matchStatusTinggi && matchStatusBerat && matchGender;
+    return matchSearch && matchStatusTinggi && matchStatusBerat && matchGender;
   });
 
   // Buka modal hapus
@@ -167,6 +169,8 @@ const BabyManagement: React.FC = () => {
     setSelectedChild(child);
     setShowDeleteModal(true);
   };
+
+  /* ------------- HANDLER ------------- */
 
   // Konfirmasi hapus
   const handleDelete = async () => {
@@ -186,6 +190,16 @@ const BabyManagement: React.FC = () => {
       setShowDeleteModal(false);
     }
   };
+
+  const handleEditChild = (child: Child) => {
+    setSelectedChild(child);
+    setShowEditModal(true);
+  };
+
+  const handleUpdateChild = async () => {
+    await fetchChildren(); // refresh data dari Supabase
+  };
+
 
   // const form = useFom
 
@@ -415,7 +429,13 @@ const BabyManagement: React.FC = () => {
                       </td>
                       <td className="px-6 py-4">
                         <div className="flex items-center justify-start gap-2">
-                          <button className="text-gray-600 p-2 rounded hover:text-white hover:bg-blue-400">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation(); // Mencegah navigate
+                              handleEditChild(child);
+                            }}
+                            className="text-gray-600 p-2 rounded hover:text-white hover:bg-blue-400"
+                          >
                             <Edit className="h-4 w-4" />
                           </button>
                           <button
@@ -534,6 +554,17 @@ const BabyManagement: React.FC = () => {
             </form>
           </div>
         </div>
+      )}
+
+      {showEditModal && selectedChild && (
+        <EditModal
+          child={selectedChild}
+          onClose={() => {
+            setShowEditModal(false);
+            setSelectedChild(null);
+          }}
+          onUpdate={handleUpdateChild}
+        />
       )}
 
       

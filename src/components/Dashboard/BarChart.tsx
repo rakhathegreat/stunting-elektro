@@ -9,7 +9,7 @@ import {
     Legend,
     ResponsiveContainer,
 } from 'recharts';
-import { supabase } from '../supabaseClient';
+import { supabase } from '../../supabaseClient';
 
 interface Analisis {
     status_tinggi: string;
