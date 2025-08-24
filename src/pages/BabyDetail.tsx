@@ -119,7 +119,7 @@ const BabyDetail: React.FC = () => {
 
   /* ---------- render ---------- */
   return (
-    <div className="grid grid-cols-4 grid-rows-1 gap-4 px-6 h-fit">
+    <div className="grid grid-cols-4 grid-rows-1 gap-4 px-6 max-h-dvh">
       {/* SIDEBAR */}
       <div className="col-span-1 bg-white shadow-md rounded-2xl h-full">
         <div className="flex flex-col h-full py-6 px-6 gap-4">

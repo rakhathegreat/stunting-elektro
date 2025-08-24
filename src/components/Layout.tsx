@@ -4,8 +4,7 @@ import {
   Home, 
   Users, 
   Baby, 
-  Stethoscope, 
-  History, 
+  Stethoscope,
   LogOut,
   Menu,
   X
@@ -22,7 +21,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     { name: 'Data Orang Tua', href: '/parents', icon: Users },
     { name: 'Data Anak', href: '/babies', icon: Baby },
     { name: 'Pemeriksaan', href: '/examination', icon: Stethoscope },
-    { name: 'Histori', href: '/history', icon: History },
   ];
 
   const getPageTitle = () => {
