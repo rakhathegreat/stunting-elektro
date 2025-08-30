@@ -40,7 +40,7 @@ const EditModal: React.FC<EditModalProps> = ({ child, onClose, onUpdate }) => {
 
     try {
       const { error } = await supabase
-        .from('anak')
+        .from('DataAnak')
         .update({
           ...formData,
           updated_at: new Date().toISOString()

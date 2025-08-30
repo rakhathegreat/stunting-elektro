@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import ParentData from "../components/parent/parent-data-form";
 
 const ParentDetail: React.FC = () => {
-  // const { id } = useParams();
+  const { id } = useParams();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState("info");
   const [parent, setParent] = useState<Parent | null>(null);
@@ -29,7 +29,7 @@ const ParentDetail: React.FC = () => {
   const fetchParent = async () => {
     const { data, error } = await supabase
       .from("DataOrangTua")
-      .select(`*, DataAnak(*)`)
+      .select(`*, DataAnak(id)`)
       .eq("id", id)
       .single();
 
@@ -128,7 +128,7 @@ const ParentDetail: React.FC = () => {
         <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
           <p className="text-sm text-gray-600">Kunjungan Terakhir</p>
           <p className="text-lg font-semibold text-gray-900">
-            {new Date(parent?.kunjungan_terakhir as Date).toLocaleDateString(
+            {new Date(parent?.kunjungan_terakhir as unknown as Date).toLocaleDateString(
               "id-ID"
             )}
           </p>
@@ -383,7 +383,7 @@ const ParentDetail: React.FC = () => {
                 <p className="text-xs text-gray-500 mt-2">
                   Terakhir diperbarui:{" "}
                   {new Date(
-                    parent?.kunjungan_terakhir as Date
+                    parent?.kunjungan_terakhir as unknown as Date
                   ).toLocaleDateString("id-ID")}
                 </p>
               </div>

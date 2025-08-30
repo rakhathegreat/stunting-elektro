@@ -12,12 +12,9 @@ import {
 import { supabase } from "../supabaseClient";
 import type { Child } from "../types/children";
 import type { Parent } from "../types/parent";
-import { useForm } from "react-hook-form";
-import {zodResolver} from "@hookform/resolvers/zod";
-import { childrenSchema } from "../schemas/children";
-import { z } from "zod"
-import { toast } from "sonner"
 import EditModal from "../components/Dashboard/EditModal";
+import DeleteModal from "../components/DeleteModal";
+import AddModal from "../components/baby/AddModal";
 
 const stats = [
   {
@@ -68,29 +65,11 @@ const BabyManagement: React.FC = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedChild, setSelectedChild] = useState<Child | null>(null);
-  const [parents, setParents] = useState<Parent[]>([]);
+  const [, setParents] = useState<Parent[]>([]);
   const [children, setChildren] = useState<Child[]>([]);
   const [statusFilter, setStatusFilter] = useState("");
   const [genderFilter, setGenderFilter] = useState("");
-  const [availableRowId, setAvailableRowId] = useState<number | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
-
-  // Form tambah anak
-  const {
-    register,
-    handleSubmit, 
-    reset,
-    formState: { errors },
-  } = useForm({
-    resolver: zodResolver(childrenSchema),
-    defaultValues: {
-      nama: "",
-      tanggal_lahir: "",
-      gender: "",
-      umur: undefined,
-      id_orang_tua: "",
-    },
-  });
 
   // 🔹 Ambil data dari Supabase
   const fetchParents = async () => {
@@ -115,7 +94,9 @@ const BabyManagement: React.FC = () => {
           nama_ayah,
           nama_ibu
         )
-      `).order("created_at", { ascending: false });
+      `)
+      .neq("nama", null)
+      .order("created_at", { ascending: false });
 
     if (error) {
       console.error("Error fetching children:", error);
@@ -124,26 +105,6 @@ const BabyManagement: React.FC = () => {
     }
   };
 
-  
-  // Submit tambah anak
-  const onSubmitAddChild = async (data: z.infer<typeof childrenSchema>) => {
-    const payload = {
-      ...data,
-      id_orang_tua: Number(data.id_orang_tua)
-    }
-    if(!availableRowId) return toast.error("Tidak ada row id yang tersedia");
-    const { data: returned, error } = await supabase.from("DataAnak").update([payload]).eq("id", availableRowId).select();
-    if (error) {
-      console.error("Error inserting child:", error);
-    } else {
-      if(returned){
-        setShowAddModal(false);
-        reset();  
-        fetchChildren();
-        toast.success("Data Anak berhasil ditambahkan");
-      }
-    }
-  };
 
   // 🔹 Filter pencarian
   const filteredChildren = children.filter((child) => {
@@ -204,26 +165,7 @@ const BabyManagement: React.FC = () => {
   // const form = useFom
 
   const openCreateBabyModal = async (open: boolean) => {
-    const { data, error } = await supabase
-    .from("DataAnak")
-    .select()
-    .is("id_orang_tua", null);
-
-    if(error){
-      toast.error("Gagal mendapatkan data anak kosong");  
-      console.error(error);
-      return
-    }
-    if (data && data.length > 0) {
-      setShowAddModal(open);
-      setAvailableRowId(data[0].id);
-    } else {
-      toast.error("Tidak ada kartu periksa baru yang tersedia");
-    }
-  };
-
-  const onError = (errors: unknown) => {
-    console.log(errors);
+    setShowAddModal(open);
   };
 
   return (
@@ -330,6 +272,9 @@ const BabyManagement: React.FC = () => {
                       Nama
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                      Jenis Kelamin
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
                       Orang Tua
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
@@ -366,8 +311,10 @@ const BabyManagement: React.FC = () => {
                         >
                           {child.nama}
                         </button>
-                        <div className="text-sm text-muted-foreground flex items-center mt-1">
-                          {child.gender}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-muted-foreground flex items-center mt-1">
+                          {child.gender === 'boys' ? 'Laki-laki' : 'Perempuan'}
                         </div>
                       </td>
                       <td className="px-6 py-4">
@@ -468,92 +415,22 @@ const BabyManagement: React.FC = () => {
       )}
 
       {showDeleteModal && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50 backdrop-blur-sm">
-          <div className="bg-white rounded-lg max-w-sm w-full p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              Hapus Data
-            </h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Apakah Anda yakin ingin menghapus data anak{" "}
-              <strong>{selectedChild?.nama}</strong>?
-            </p>
-            <div className="flex justify-end space-x-3">
-              <button
-                onClick={() => setShowDeleteModal(false)}
-                className="px-4 py-2 text-sm text-gray-700 bg-gray-200 rounded-lg"
-              >
-                Batal
-              </button>
-              <button
-                onClick={handleDelete}
-                className="px-4 py-2 text-sm text-white bg-red-600 rounded-lg hover:bg-red-700"
-              >
-                Hapus
-              </button>
-            </div>
-          </div>
-        </div>
+        <DeleteModal
+          isOpen={showDeleteModal}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDelete}
+          title="Hapus Data Pemeriksaan"
+          message="Anda akan menghapus data ini secara permanen.
+Semua informasi terkait tidak dapat dikembalikan. Lanjutkan?"
+        />
       )}
 
       {showAddModal && (
-        <div className="fixed inset-0 bg-gray-600/50 flex items-center justify-center p-4 z-50 backdrop-blur-xs">
-          <div className="bg-white rounded-lg max-w-md w-full p-6">
-            <h3 className="text-lg font-medium text-gray-900 mb-4">Tambah Data Anak</h3>
-            <form onSubmit={handleSubmit(onSubmitAddChild, onError)} className="space-y-4">
-              <input
-                type="text"
-                placeholder="Nama Lengkap"
-                {...register("nama")}
-                className="w-full px-3 py-2 border rounded-lg"
-              />
-              {errors.nama && <p className="text-red-500 text-xs">{errors.nama.message}</p>}
-              <input
-                type="date"
-                placeholder="Tanggal Lahir"
-                {...register("tanggal_lahir")}
-                className="w-full px-3 py-2 border rounded-lg"
-              />
-              {errors.tanggal_lahir && <p className="text-red-500 text-xs">{errors.tanggal_lahir.message}</p>}
-              <select {...register("gender")} className="w-full px-3 py-2 border rounded-lg">
-                <option value="">Pilih Gender</option>
-                <option value="Laki-laki">Laki-laki</option>
-                <option value="Perempuan">Perempuan</option>
-              </select>
-              {errors.gender && <p className="text-red-500 text-xs">{errors.gender.message}</p>}
-              <input
-                type="number"
-                placeholder="Umur (optional)"
-                {...register("umur", { valueAsNumber: true })}
-                className="w-full px-3 py-2 border rounded-lg"
-              />
-              {errors.umur && <p className="text-red-500 text-xs">{errors.umur.message}</p>}
-              <select {...register("id_orang_tua")} className="w-full px-3 py-2 border rounded-lg">
-                <option value="">Pilih Orang Tua</option>
-                {parents.map((parent) => (
-                  <option key={parent.id} value={parent.id}>
-                    {parent.nama_ayah} & {parent.nama_ibu}
-                  </option>
-                ))}
-              </select>
-              {errors.id_orang_tua && <p className="text-red-500 text-xs">{errors.id_orang_tua.message}</p>}
-              <div className="flex justify-end space-x-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 text-sm text-gray-700 bg-gray-200 rounded-lg"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-4 py-2 text-sm text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-                >
-                  Simpan
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
+        <AddModal 
+          onClose={() => {
+            setShowAddModal(false);
+          }}
+        />
       )}
 
       {showEditModal && selectedChild && (

@@ -12,6 +12,7 @@ import ParentDetail from './pages/ParentDetail';
 import BabyManagement from './pages/BabyManagement';
 import BabyDetail from './pages/BabyDetail';
 import Layout from './components/Layout';
+import ExaminationManagement from './pages/ExaminationManagement';
 import { AuthContextProvider } from './context/AuthContext';
 import { useUserAuth } from "./context/auth-context"
 import { Toaster } from "sonner";
@@ -36,6 +37,7 @@ function AppRoutes() {
           <Route path="/parents/:id" element={<ParentDetail />} />
           <Route path="/babies" element={<BabyManagement />} />
           <Route path="/babies/:id" element={<BabyDetail />} />
+          <Route path="/examination" element={<ExaminationManagement />} />
         </Routes>
       </Layout>
     </Router>

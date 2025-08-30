@@ -5,6 +5,7 @@ interface InputProps {
     type?: string
     value?: string | number
     onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
+    required?: boolean
 }
 
 const Input: React.FC<InputProps> = ({ name, placeholder, className, type, value, onChange}) => {
@@ -23,7 +24,6 @@ const Input: React.FC<InputProps> = ({ name, placeholder, className, type, value
                     id="hs-validation-name-error"
                     name="hs-validation-name-error"
                     className={`py-3 px-4 block w-full border border-gray-400 rounded-lg text-sm focus:outline-none ${className || ""}`}
-                    required
                     placeholder={placeholder}
                     value={value || ""}
                     aria-describedby="hs-validation-name-error-helper"

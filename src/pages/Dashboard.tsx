@@ -51,8 +51,8 @@ const Dashboard: React.FC = () => {
         Object.entries(obj).map(([name, value]) => ({ name, value }));
 
       /* filter gender */
-      const male   = typedata?.filter(r => r.id_anak.gender === 'Laki-laki');
-      const female = typedata?.filter(r => r.id_anak.gender === 'Perempuan');
+      const male   = typedata?.filter(r => r.id_anak.gender === 'boys');
+      const female = typedata?.filter(r => r.id_anak.gender === 'girls');
 
       /* set state */
       setMaleHeight(toPie(count(male,   'status_tinggi')));
