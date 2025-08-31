@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Plus, Trash2 } from "lucide-react";
+import { Search, Trash2 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import DeleteModal from "../components/DeleteModal";
 
@@ -9,7 +9,8 @@ const ExaminationManagement: React.FC = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [examination, setExamination] = useState<any[]>([]);
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusTinggiFilter, setStatusTinggiFilter] = useState("");
+  const [statusBeratFilter,  setStatusBeratFilter]  = useState("");
   const [genderFilter, setGenderFilter] = useState("");
   const [selectedAnalisis, setSelectedAnalisis] = useState<any | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -31,14 +32,27 @@ const ExaminationManagement: React.FC = () => {
     fetchExamination();
   }, []);
 
-  const filteredData = examination.filter((item) => {
-    const nama = item.DataAnak?.nama?.toLowerCase() || "";
-    const gender = item.DataAnak?.gender || "";
-    return (
-      nama.includes(searchTerm.toLowerCase()) &&
-      (statusFilter ? item.status_tinggi === statusFilter : true) &&
-      (genderFilter ? gender === genderFilter : true)
-    );
+  const filteredData = examination.filter((child) => {
+    const term = searchTerm.toLowerCase();
+
+    const matchSearch =
+      (child?.DataAnak?.nama || "").toLowerCase().includes(term) ||
+      (child?.gender || "").toLowerCase().includes(term) ||
+      (
+        (child.DataOrangTua?.nama_ayah || "") +
+        (child.DataOrangTua?.nama_ibu || "")
+      ).toLowerCase().includes(term);
+
+    const matchStatusTinggi =
+      !statusTinggiFilter || (child?.status_tinggi || "") === statusTinggiFilter;
+
+    const matchStatusBerat =
+      !statusBeratFilter || (child?.status_berat || "") === statusBeratFilter;
+
+    const matchGender =
+      !genderFilter || (child?.DataAnak?.gender || "") === genderFilter;
+
+    return matchSearch && matchStatusTinggi && matchStatusBerat && matchGender;
   });
 
   const formatDate = (dateString: string) => {
@@ -83,40 +97,45 @@ const ExaminationManagement: React.FC = () => {
                 </div>
                 <input
                   type="text"
-                  placeholder="Cari nama anak..."
+                  placeholder="Cari data anak..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 />
               </div>
 
               <div className="flex gap-4">
                 <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  value={statusTinggiFilter}
+                  onChange={(e) => setStatusTinggiFilter(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium"
                 >
-                  <option value="">Semua Status</option>
+                  <option value="">Status Tinggi</option>
+                  <option value="Tinggi">Tinggi</option>
                   <option value="Normal">Normal</option>
-                  <option value="Stunting">Stunting</option>
-                  <option value="Stunting Parah">Stunting Parah</option>
+                  <option value="Pendek">Pendek</option>
+                  <option value="Sangat Pendek">Sangat Pendek</option>
+                </select>
+                <select
+                  value={statusBeratFilter}
+                  onChange={(e) => setStatusBeratFilter(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium"
+                >
+                  <option value="">Status Berat</option>
+                  <option value="Gemuk">Gemuk</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Kurus">Kurus</option>
+                  <option value="Sangat Kurus">Sangat Kurus</option>
                 </select>
                 <select
                   value={genderFilter}
                   onChange={(e) => setGenderFilter(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm"
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium"
                 >
                   <option value="">Semua Gender</option>
-                  <option value="Laki-laki">Laki-laki</option>
-                  <option value="Perempuan">Perempuan</option>
+                  <option value="boys">Laki-laki</option>
+                  <option value="girls">Perempuan</option>
                 </select>
-                <button
-                  onClick={() => navigate("/childs/add")}
-                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Tambah Data Anak
-                </button>
               </div>
             </div>
 
@@ -144,7 +163,7 @@ const ExaminationManagement: React.FC = () => {
                             {item.DataAnak?.nama || "-"}
                           </button>
                         </td>
-                        <td className="px-6 py-4 text-sm">{item.DataAnak?.gender || "-"}</td>
+                        <td className="px-6 py-4 text-sm">{item.DataAnak?.gender === "boys" ? "Laki-laki" : "Perempuan"}</td>
                         <td className="px-6 py-4 text-sm">{item.DataAnak?.umur ? `${item.DataAnak.umur} bulan` : "-"}</td>
                         <td className="px-6 py-4">
                           <span className={`px-3 py-1 text-xs font-bold rounded-full ${
