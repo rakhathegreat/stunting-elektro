@@ -67,7 +67,8 @@ const BabyManagement: React.FC = () => {
   const [selectedChild, setSelectedChild] = useState<Child | null>(null);
   const [, setParents] = useState<Parent[]>([]);
   const [children, setChildren] = useState<Child[]>([]);
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusTinggiFilter, setStatusTinggiFilter] = useState("");
+  const [statusBeratFilter,  setStatusBeratFilter]  = useState("");
   const [genderFilter, setGenderFilter] = useState("");
   const [showEditModal, setShowEditModal] = useState(false);
 
@@ -113,14 +114,19 @@ const BabyManagement: React.FC = () => {
     const matchSearch =
       (child?.nama || "").toLowerCase().includes(term) ||
       (child?.gender || "").toLowerCase().includes(term) ||
-      (typeof child.DataOrangTua === "object" && child.DataOrangTua !== null
-        ? ((child.DataOrangTua.nama_ayah || "") + (child.DataOrangTua.nama_ibu || "")).toLowerCase().includes(term)
-        : "");
+      (
+        (child.DataOrangTua?.nama_ayah || "") +
+        (child.DataOrangTua?.nama_ibu || "")
+      ).toLowerCase().includes(term);
 
-    const matchStatusTinggi = !statusFilter || (child?.status_tinggi || "") === statusFilter;
-    const matchStatusBerat = !statusFilter || (child?.status_berat || "") === statusFilter;
+    const matchStatusTinggi =
+      !statusTinggiFilter || (child?.status_tinggi || "") === statusTinggiFilter;
 
-    const matchGender = !genderFilter || (child?.gender || "") === genderFilter;
+    const matchStatusBerat =
+      !statusBeratFilter || (child?.status_berat || "") === statusBeratFilter;
+
+    const matchGender =
+      !genderFilter || (child?.gender || "") === genderFilter;
 
     return matchSearch && matchStatusTinggi && matchStatusBerat && matchGender;
   });
@@ -236,14 +242,26 @@ const BabyManagement: React.FC = () => {
 
               <div className="flex gap-4">
                 <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
+                  value={statusTinggiFilter}
+                  onChange={(e) => setStatusTinggiFilter(e.target.value)}
                   className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium"
                 >
-                  <option value="">Semua Status</option>
+                  <option value="">Status Tinggi</option>
+                  <option value="Tinggi">Tinggi</option>
                   <option value="Normal">Normal</option>
-                  <option value="Stunting">Stunting</option>
-                  <option value="Stunting Parah">Stunting Parah</option>
+                  <option value="Pendek">Pendek</option>
+                  <option value="Sangat Pendek">Sangat Pendek</option>
+                </select>
+                <select
+                  value={statusBeratFilter}
+                  onChange={(e) => setStatusBeratFilter(e.target.value)}
+                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium"
+                >
+                  <option value="">Status Berat</option>
+                  <option value="Gemuk">Gemuk</option>
+                  <option value="Normal">Normal</option>
+                  <option value="Kurus">Kurus</option>
+                  <option value="Sangat Kurus">Sangat Kurus</option>
                 </select>
                 <select
                   value={genderFilter}
@@ -251,8 +269,8 @@ const BabyManagement: React.FC = () => {
                   className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium"
                 >
                   <option value="">Semua Gender</option>
-                  <option value="Laki-laki">Laki-laki</option>
-                  <option value="Perempuan">Perempuan</option>
+                  <option value="boys">Laki-laki</option>
+                  <option value="girls">Perempuan</option>
                 </select>
                 <button
                   onClick={() => openCreateBabyModal(true)}
@@ -348,7 +366,7 @@ const BabyManagement: React.FC = () => {
                               : "bg-gradient-to-r from-red-100 to-rose-100 text-red-800"
                           }`}
                         >
-                          {child.status_berat}
+                          {child.status_tinggi}
                         </span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
