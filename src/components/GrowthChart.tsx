@@ -96,10 +96,10 @@ const GrowthChart: React.FC<GrowthChartProps> = ({ gender, id, type }) => {
             <Tooltip />
             <Legend wrapperStyle={{ paddingTop: "20px" }} />
             {/* WHO lines */}
-            <Line type="monotone" dataKey="normal" stroke="#82ca9d" strokeDasharray="5 5" opacity={0.3} name="Normal" dot={false} strokeWidth={2} />
-            <Line type="monotone" dataKey="pendek" stroke="#8884d8" strokeDasharray="5 5" opacity={0.3} name="Pendek" dot={false} strokeWidth={2} />
-            <Line type="monotone" dataKey="sangat_pendek" stroke="#ff0000" strokeDasharray="5 5" opacity={0.3} name="Sangat Pendek" dot={false} strokeWidth={2} />
-            <Line type="monotone" dataKey="tinggi" stroke="#ff7300" strokeDasharray="5 5" opacity={0.3} name="Tinggi" dot={false} strokeWidth={2} />
+            <Line type="monotone" dataKey="normal" stroke="#82ca9d" strokeDasharray="5 5" opacity={0.5} name="Normal" dot={false} strokeWidth={2} />
+            <Line type="monotone" dataKey="pendek" stroke="#8884d8" strokeDasharray="5 5" opacity={0.5} name="Pendek" dot={false} strokeWidth={2} />
+            <Line type="monotone" dataKey="sangat_pendek" stroke="#ff0000" strokeDasharray="5 5" opacity={0.5} name="Sangat Pendek" dot={false} strokeWidth={2} />
+            <Line type="monotone" dataKey="tinggi" stroke="#ff7300" strokeDasharray="5 5" opacity={0.5} name="Tinggi" dot={false} strokeWidth={2} />
             <Line type="monotone" dataKey="tinggi_anak" stroke="#6082B6" name="Tinggi Anak" strokeWidth={3} />
             </LineChart>
         </ResponsiveContainer>
