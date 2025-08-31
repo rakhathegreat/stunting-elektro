@@ -16,50 +16,28 @@ import EditModal from "../components/Dashboard/EditModal";
 import DeleteModal from "../components/DeleteModal";
 import AddModal from "../components/baby/AddModal";
 
-const stats = [
-  {
-    name: "Total Anak",
-    stat: "127",
-    icon: Users,
-    change: "+12%",
-    changeType: "increase",
-    color: "blue",
-  },
-  {
-    name: "Normal",
-    stat: "89",
-    icon: Users,
-    change: "+8%",
-    changeType: "increase",
-    color: "green",
-  },
-  {
-    name: "Stunting",
-    stat: "234",
-    icon: Users,
-    change: "+23%",
-    changeType: "increase",
-    color: "yellow",
-  },
-  {
-    name: "Stunting Berat",
-    stat: "78%",
-    icon: Users,
-    change: "+5%",
-    changeType: "increase",
-    color: "red",
-  },
-  {
-    name: "Usia Rata-Rata",
-    stat: "78%",
-    icon: Users,
-    change: "+5%",
-    changeType: "increase",
-    color: "blue",
-  },
-];
+const today = () => new Date().toISOString().slice(0, 10);
+
+interface Snapshot {
+  date: string;
+  total: number;
+  boys: number;
+  girls: number;
+}
+
+const loadHistory = (): Snapshot[] => {
+  try {
+    return JSON.parse(localStorage.getItem("baby_history") || "[]");
+  } catch {
+    return [];
+  }
+};
+
+const saveHistory = (list: Snapshot[]) =>
+  localStorage.setItem("baby_history", JSON.stringify(list));
 
 const BabyManagement: React.FC = () => {
+  const formatNumber = (n: number) => new Intl.NumberFormat('id-ID').format(n);
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
@@ -71,6 +49,74 @@ const BabyManagement: React.FC = () => {
   const [statusBeratFilter,  setStatusBeratFilter]  = useState("");
   const [genderFilter, setGenderFilter] = useState("");
   const [showEditModal, setShowEditModal] = useState(false);
+  const totalChildren = children.length;
+  const boys   = children.filter(c => c.gender === "boys").length;
+  const girls  = children.filter(c => c.gender === "girls").length;
+  const avgAge =
+    totalChildren === 0
+      ? 0
+      : children.reduce((sum, c) => sum + (c.umur || 0), 0) / totalChildren;
+
+  const [trend, setTrend] = useState({ total: 0, boys: 0, girls: 0 });
+
+  useEffect(() => {
+    const history = loadHistory();
+    const todayStr = today();
+    const yesterdayStr = new Date(Date.now() - 86400000)
+      .toISOString()
+      .slice(0, 10);
+
+    // simpan/ update hari ini
+    const todayIdx = history.findIndex(h => h.date === todayStr);
+    const todayData = { date: todayStr, total: totalChildren, boys, girls };
+    if (todayIdx === -1) history.push(todayData);
+    else history[todayIdx] = todayData;
+    saveHistory(history);
+
+    // ambil snapshot kemarin
+    const y = history.find(h => h.date === yesterdayStr) || {
+      total: 0,
+      boys: 0,
+      girls: 0,
+    };
+    setTrend({
+      total: totalChildren - y.total,
+      boys: boys - y.boys,
+      girls: girls - y.girls,
+    });
+  }, [totalChildren, boys, girls]);
+
+  // statsData otomatis ter-update
+  const statsData = [
+    {
+      name: "Total Anak",
+      stat: formatNumber(totalChildren),
+      change: `${trend.total >= 0 ? "+" : ""}${trend.total}`,
+      color: "blue",
+      icon: Users,
+    },
+    {
+      name: "Jumlah Laki-laki",
+      stat: formatNumber(boys),
+      change: `${trend.boys >= 0 ? "+" : ""}${trend.boys}`,
+      color: "green",
+      icon: Users,
+    },
+    {
+      name: "Jumlah Perempuan",
+      stat: formatNumber(girls),
+      change: `${trend.girls >= 0 ? "+" : ""}${trend.girls}`,
+      color: "yellow",
+      icon: Users,
+    },
+    {
+      name: "Rata-Rata Usia",
+      stat: `${avgAge.toFixed(1)} bln`,
+      change: "+0",
+      color: "indigo",
+      icon: Users,
+    },
+  ];
 
   // 🔹 Ambil data dari Supabase
   const fetchParents = async () => {
@@ -167,25 +213,20 @@ const BabyManagement: React.FC = () => {
     await fetchChildren(); // refresh data dari Supabase
   };
 
-
-  // const form = useFom
-
   const openCreateBabyModal = async (open: boolean) => {
     setShowAddModal(open);
   };
 
   return (
     <div className="space-y-6">
-      <div className="px-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-5">
-        {stats.map((item) => (
+      <div className="px-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+        {statsData.map((item) => (
           <div
             key={item.name}
-            className="bg-white relative glass pt-6 px-6 pb-6 shadow-modern rounded-2xl overflow-hidden hover:shadow-modern-lg transition-all hover:scale-[1.02] shadow-md"
+            className="bg-white relative glass py-6 px-6 shadow-modern rounded-2xl overflow-hidden hover:shadow-modern-lg transition-all hover:scale-[1.02] shadow-md"
           >
             <dt>
-              <div
-                className={`absolute bg-gradient-to-br from-${item.color}-500 to-${item.color}-600 rounded-xl p-3 shadow-modern`}
-              >
+              <div className={`absolute bg-gradient-to-br from-${item.color}-500 to-${item.color}-600 rounded-xl p-3 shadow-modern`}>
                 <item.icon className="h-6 w-6 text-white" aria-hidden="true" />
               </div>
               <p className="ml-16 text-sm font-semibold text-gray-500 truncate">
@@ -194,24 +235,8 @@ const BabyManagement: React.FC = () => {
             </dt>
             <dd className="ml-16 pb-2 flex items-baseline">
               <p className="text-3xl font-bold text-gray-900">{item.stat}</p>
-              <p
-                className={`ml-3 flex items-baseline text-sm font-semibold ${
-                  item.changeType === "increase"
-                    ? "text-green-600"
-                    : "text-red-600"
-                }`}
-              >
-                <TrendingUp
-                  className="self-center flex-shrink-0 h-4 w-4 text-green-500 mr-1"
-                  aria-hidden="true"
-                />
-                <span className="sr-only">
-                  {" "}
-                  {item.changeType === "increase"
-                    ? "Increased"
-                    : "Decreased"}{" "}
-                  by{" "}
-                </span>
+              <p className={`ml-3 flex items-baseline text-sm font-semibold text-green-600`}>
+                <TrendingUp className="self-center flex-shrink-0 h-4 w-4 text-green-500 mr-1" />
                 {item.change}
               </p>
             </dd>
@@ -425,9 +450,9 @@ const BabyManagement: React.FC = () => {
 
       {filteredChildren.length === 0 && (
         <div className="text-center py-12 text-gray-500">
-          <p className="text-lg font-medium">Tidak ada data orang tua</p>
+          <p className="text-lg font-medium">Tidak ada data anak</p>
           <p className="mt-2">
-            Coba ubah kata kunci pencarian atau tambah orang tua baru
+            Coba ubah kata kunci pencarian
           </p>
         </div>
       )}
