@@ -115,10 +115,10 @@ const GrowthChart: React.FC<GrowthChartProps> = ({ gender, id, type }) => {
             <Tooltip />
             <Legend wrapperStyle={{ paddingTop: "20px" }} />
             {/* WHO lines */}
-            <Line type="monotone" dataKey="sangat_kurus" stroke="#ff0000" strokeDasharray={"5 5"} opacity={0.3} name="Sangat Kurus" dot={false} strokeWidth={2} />
-            <Line type="monotone" dataKey="kurus" stroke="#8884d8" strokeDasharray={"5 5"} opacity={0.3} name="Kurus" dot={false} strokeWidth={2} />
-            <Line type="monotone" dataKey="normal" stroke="#82ca9d" strokeDasharray={"5 5"} opacity={0.3} name="Normal" dot={false} strokeWidth={2} />
-            <Line type="monotone" dataKey="gemuk" stroke="#ff7300" strokeDasharray={"5 5"} opacity={0.3} name="Gemuk" dot={false} strokeWidth={2} />
+            <Line type="monotone" dataKey="sangat_kurus" stroke="#ff0000" strokeDasharray={"5 5"} opacity={0.5} name="Sangat Kurus" dot={false} strokeWidth={2} />
+            <Line type="monotone" dataKey="kurus" stroke="#8884d8" strokeDasharray={"5 5"} opacity={0.5} name="Kurus" dot={false} strokeWidth={2} />
+            <Line type="monotone" dataKey="normal" stroke="#82ca9d" strokeDasharray={"5 5"} opacity={0.5} name="Normal" dot={false} strokeWidth={2} />
+            <Line type="monotone" dataKey="gemuk" stroke="#ff7300" strokeDasharray={"5 5"} opacity={0.5} name="Gemuk" dot={false} strokeWidth={2} />
             {/* Anak line */}
             <Line type="monotone" dataKey="berat_anak" stroke="#6082B6" name="Berat Anak" strokeWidth={3} />
             </LineChart>
