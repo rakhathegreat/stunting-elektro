@@ -5,40 +5,25 @@ import { supabase } from "../supabaseClient";
 import type { Parent } from "../types/parent";
 import type { Child } from "../types/children";
 
-const stats = [
-    {
-      name: 'Total Orang Tua',
-      stat: '127',
-      icon: Users,
-      change: '+12%',
-      changeType: 'increase',
-      color: 'blue'
-    },
-    {
-      name: 'Aktif',
-      stat: '89',
-      icon: Users,
-      change: '+8%',
-      changeType: 'increase',
-      color: 'blue'
-    },
-    {
-      name: 'Tidak Aktif',
-      stat: '234',
-      icon: Users,
-      change: '+23%',
-      changeType: 'increase',
-      color: 'blue'
-    },
-    {
-      name: 'Total Anak',
-      stat: '78%',
-      icon: Users,
-      change: '+5%',
-      changeType: 'increase',
-      color: 'blue'
-    }
-  ];
+const today = () => new Date().toISOString().slice(0, 10);
+
+interface Snapshot {
+  date: string;
+  total: number;
+  aktif: number;
+  anak: number;
+}
+
+const loadHistory = (): Snapshot[] => {
+  try {
+    return JSON.parse(localStorage.getItem("parent_history") || "[]");
+  } catch {
+    return [];
+  }
+};
+
+const saveHistory = (list: Snapshot[]) =>
+  localStorage.setItem("parent_history", JSON.stringify(list));
 
 const ParentManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -52,28 +37,19 @@ const ParentManagement: React.FC = () => {
     no_hp: "",
   });
 
-  // 🔹 Ambil data dari Supabase
+  /* fetch data */
   const fetchParents = async () => {
     const { data, error } = await supabase.from("DataOrangTua").select("*");
-    if (error) {
-      console.error("Error fetching parents:", error);
-    } else {
-      setParents(data || []);
-    }
+    if (error) console.error("Error fetching parents:", error);
+    else setParents(data || []);
   };
 
-  useEffect(() => {
-    fetchParents();
-  }, []);
-
   const fetchChildren = async () => {
-    const { data, error } = await supabase.from("DataAnak").select(`*, DataOrangTua(id, nama_ayah, nama_ibu)`);
-    if (error) {
-      console.error("Error fetching children:", error);
-    } else {
-      console.log(data);
-      setChildren(data || []);
-    }
+    const { data, error } = await supabase
+      .from("DataAnak")
+      .select(`*, DataOrangTua(id, nama_ayah, nama_ibu)`);
+    if (error) console.error("Error fetching children:", error);
+    else setChildren(data || []);
   };
 
   useEffect(() => {
@@ -81,50 +57,125 @@ const ParentManagement: React.FC = () => {
     fetchChildren();
   }, []);
 
-  const getChildCount = (parentId: string) => {
-    return children.filter((child) => child?.DataOrangTua?.id === parentId).length;
-  };
+  /* statistik + trending per-hari */
+  const totalParents = parents.length;
+  const aktifParents = parents.filter((p) => p.status_aktif === "Aktif").length;
+  const totalChildrenCount = children.length;
 
-  // 🔹 Tambah data baru
+  const [trend, setTrend] = useState({ total: 0, aktif: 0, anak: 0 });
+
+  useEffect(() => {
+    const history = loadHistory();
+    const todayStr = today();
+    const yesterdayStr = new Date(Date.now() - 86400000)
+      .toISOString()
+      .slice(0, 10);
+
+    const todayData = {
+      date: todayStr,
+      total: totalParents,
+      aktif: aktifParents,
+      anak: totalChildrenCount,
+    };
+    const idx = history.findIndex((h) => h.date === todayStr);
+    idx === -1 ? history.push(todayData) : (history[idx] = todayData);
+    saveHistory(history);
+
+    const y = history.find((h) => h.date === yesterdayStr) || {
+      total: 0,
+      aktif: 0,
+      anak: 0,
+    };
+    setTrend({
+      total: totalParents - y.total,
+      aktif: aktifParents - y.aktif,
+      anak: totalChildrenCount - y.anak,
+    });
+  }, [totalParents, aktifParents, totalChildrenCount]);
+
+  const statsData = [
+    {
+      name: "Total Orang Tua",
+      stat: totalParents.toLocaleString("id-ID"),
+      change: `${trend.total >= 0 ? "+" : ""}${trend.total}`,
+      color: "blue",
+      icon: Users,
+    },
+    {
+      name: "Aktif",
+      stat: aktifParents.toLocaleString("id-ID"),
+      change: `${trend.aktif >= 0 ? "+" : ""}${trend.aktif}`,
+      color: "green",
+      icon: Users,
+    },
+    {
+      name: "Tidak Aktif",
+      stat: (totalParents - aktifParents).toLocaleString("id-ID"),
+      change: `${(totalParents - aktifParents - (loadHistory().find(h=>h.date===new Date(Date.now()-86400000).toISOString().slice(0,10))?.aktif || 0))}`,
+      color: "red",
+      icon: Users,
+    },
+    {
+      name: "Total Anak",
+      stat: totalChildrenCount.toLocaleString("id-ID"),
+      change: `${trend.anak >= 0 ? "+" : ""}${trend.anak}`,
+      color: "blue",
+      icon: Users,
+    },
+  ];
+
+  /* tambah data */
   const handleAddParent = async (e: React.FormEvent) => {
     e.preventDefault();
     const { error } = await supabase.from("DataOrangTua").insert([formData]);
-    if (error) {
-      console.error("Error inserting parent:", error);
-    } else {
+    if (!error) {
       setShowAddModal(false);
       setFormData({ nama: "", email: "", no_hp: "" });
-      fetchParents(); // refresh data
+      fetchParents();
     }
   };
 
-  // 🔹 Filter pencarian
+  /* filter */
   const filteredParents = parents.filter(
-    (parent) =>
-      (parent?.nama_ibu || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (parent?.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (parent?.nama_ayah || "").toLowerCase().includes(searchTerm.toLowerCase())
+    (p) =>
+      (p.nama_ibu || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.email || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (p.nama_ayah || "").toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const getChildCount = (parentId: string) =>
+    children.filter((c) => c?.DataOrangTua?.id === parentId).length;
 
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="px-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        {stats.map((item) => (
-          <div key={item.name} className="bg-white relative glass pt-6 px-6 pb-6 shadow-modern rounded-2xl overflow-hidden hover:shadow-modern-lg transition-all hover:scale-[1.02] shadow-md">
+        {statsData.map((item) => (
+          <div
+            key={item.name}
+            className="bg-white relative glass pt-6 px-6 pb-6 shadow-modern rounded-2xl overflow-hidden hover:shadow-modern-lg transition-all hover:scale-[1.02] shadow-md"
+          >
             <dt>
-              <div className={`absolute bg-gradient-to-br from-${item.color}-500 to-${item.color}-600 rounded-xl p-3 shadow-modern`}>
+              <div
+                className={`absolute bg-gradient-to-br from-${item.color}-500 to-${item.color}-700 rounded-xl p-3 shadow-modern`}
+              >
                 <item.icon className="h-6 w-6 text-white" aria-hidden="true" />
               </div>
-              <p className="ml-16 text-sm font-semibold text-gray-500 truncate">{item.name}</p>
+              <p className="ml-16 text-sm font-semibold text-gray-500 truncate">
+                {item.name}
+              </p>
             </dt>
             <dd className="ml-16 pb-2 flex items-baseline">
               <p className="text-3xl font-bold text-gray-900">{item.stat}</p>
-              <p className={`ml-3 flex items-baseline text-sm font-semibold ${
-                item.changeType === 'increase' ? 'text-green-600' : 'text-red-600'
-              }`}>
-                <TrendingUp className="self-center flex-shrink-0 h-4 w-4 text-green-500 mr-1" aria-hidden="true" />
-                <span className="sr-only"> {item.changeType === 'increase' ? 'Increased' : 'Decreased'} by </span>
+              <p
+                className={`ml-3 flex items-baseline text-sm font-semibold ${
+                  Number(item.change) >= 0 ? "text-green-600" : "text-red-600"
+                }`}
+              >
+                <TrendingUp
+                  className="self-center flex-shrink-0 h-4 w-4 mr-1"
+                  aria-hidden="true"
+                />
                 {item.change}
               </p>
             </dd>
