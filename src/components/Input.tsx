@@ -6,9 +6,10 @@ interface InputProps {
     value?: string | number
     onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
     required?: boolean
+    disabled?: boolean
 }
 
-const Input: React.FC<InputProps> = ({ name, placeholder, className, type, value, onChange}) => {
+const Input: React.FC<InputProps> = ({ name, placeholder, className, type, value, onChange, disabled}) => {
     return (
         <div className="space-y-4">
             <div>
@@ -28,6 +29,7 @@ const Input: React.FC<InputProps> = ({ name, placeholder, className, type, value
                     value={value || ""}
                     aria-describedby="hs-validation-name-error-helper"
                     onChange={onChange || undefined}
+                    disabled={disabled || false}
                 />
                 </div>
             </div>

@@ -126,6 +126,33 @@ const AddModal: React.FC<AddModalProps> = ({ onClose }) => {
     }
   };
 
+  const ageCalculate = (dateString: string): number => {
+    if (!dateString) return 0;
+    
+    const today = new Date();
+    const birthDate = new Date(dateString);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      age--;
+    }
+    
+    return age * 12 + (today.getMonth() - birthDate.getMonth() + (today.getDate() < birthDate.getDate() ? -1 : 0));
+  };
+
+  useEffect(() => {
+    if (formData.tanggal_lahir) {
+      const calculatedAge = ageCalculate(formData.tanggal_lahir);
+      
+      // Update formData.umur dengan umur yang sudah dihitung (dalam bulan)
+      setFormData(prev => ({
+        ...prev,
+        umur: calculatedAge
+      }));
+    }
+  }, [formData.tanggal_lahir]);
+
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50">
       <div 
@@ -163,16 +190,6 @@ const AddModal: React.FC<AddModalProps> = ({ onClose }) => {
                   </div>
                 )}
               </div>
-
-              {/* <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200">
-                <button 
-                  type="button"
-                  onClick={onClose}
-                  className="px-4 py-2 text-sm font-medium text-gray-900 bg-gray-100 border border-gray-300 rounded-lg hover:bg-gray-300 hover:cursor-pointer"
-                >
-                  Batal
-                </button>
-              </div> */}
           </div>
         ) : (
           <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-xl z-10 mx-4">
@@ -214,9 +231,10 @@ const AddModal: React.FC<AddModalProps> = ({ onClose }) => {
                       <Input 
                         name="Umur (Bulan)"
                         type="number"
-                        value={formData.umur}
-                        onChange={(e) => setFormData({...formData, umur: parseInt(e.target.value) || 0})}
+                        value={formData.umur} // Gunakan nilai dari state yang sudah dihitung
+                        onChange={(e) => setFormData({...formData, umur: parseInt(e.target.value)})}
                         placeholder="Contoh: 36"
+                        disabled={true} // Tetap disabled karena dihitung otomatis
                       />
                     </div>
                   </div>
