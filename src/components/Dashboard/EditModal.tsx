@@ -1,6 +1,7 @@
 import Input from "../Input";
 import { useState, useEffect } from "react";
 import { supabase } from "../../supabaseClient";
+import { showError, showSuccess } from "../../utils/feedback";
 
 interface EditModalProps {
   child: any;
@@ -48,11 +49,12 @@ const EditModal: React.FC<EditModalProps> = ({ child, onClose, onUpdate }) => {
         .eq('id', child.id);
 
       if (error) throw error;
-      
+
       onUpdate();
+      showSuccess('Data anak berhasil diperbarui');
       onClose();
     } catch (error) {
-      console.error("Error updating child:", error);
+      showError('Gagal memperbarui data anak', error);
     } finally {
       setLoading(false);
     }

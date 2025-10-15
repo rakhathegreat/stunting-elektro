@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Search,
@@ -15,6 +15,7 @@ import type { Parent } from "../types/parent";
 import EditModal from "../components/Dashboard/EditModal";
 import DeleteModal from "../components/DeleteModal";
 import AddModal from "../components/baby/AddModal";
+import { showError, showSuccess } from "../utils/feedback";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -119,38 +120,46 @@ const BabyManagement: React.FC = () => {
   ];
 
   // 🔹 Ambil data dari Supabase
-  const fetchParents = async () => {
-    const { data, error } = await supabase.from("DataOrangTua").select("*");
-    if (error) {
-      console.error("Error fetching parents:", error);
-    } else {
+  const fetchParents = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.from("DataOrangTua").select("*");
+      if (error) {
+        throw error;
+      }
       setParents(data || []);
+    } catch (error) {
+      showError("Gagal memuat data orang tua", error);
     }
-  };
-
- useEffect(() => {
-    fetchParents();
-    fetchChildren();
   }, []);
 
-
-  const fetchChildren = async () => {
-    const { data, error } = await supabase.from("DataAnak").select(`
+  const fetchChildren = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("DataAnak")
+        .select(`
         *,
         DataOrangTua (
           nama_ayah,
           nama_ibu
         )
       `)
-      .neq("nama", null)
-      .order("created_at", { ascending: false });
+        .neq("nama", null)
+        .order("created_at", { ascending: false });
 
-    if (error) {
-      console.error("Error fetching children:", error);
-    } else {
+      if (error) {
+        throw error;
+      }
+
       setChildren(data || []);
+    } catch (error) {
+      showError("Gagal memuat data anak", error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchParents();
+    fetchChildren();
+  }, [fetchParents, fetchChildren]);
 
 
   // 🔹 Filter pencarian
@@ -190,17 +199,21 @@ const BabyManagement: React.FC = () => {
     if (!selectedChild) return;
     console.log("Deleting child id:", selectedChild.id);
 
-    const { error, status } = await supabase
-      .from("DataAnak")
-      .delete()
-      .eq("id", selectedChild.id);
+    try {
+      const { error } = await supabase
+        .from("DataAnak")
+        .delete()
+        .eq("id", selectedChild.id);
 
-    if (error) {
-      console.error("Delete error:", error);
-    } else {
-      console.log("Delete success, status:", status); // 204
-      await fetchChildren(); // refresh UI
+      if (error) {
+        throw error;
+      }
+
+      await fetchChildren();
       setShowDeleteModal(false);
+      showSuccess("Data anak berhasil dihapus");
+    } catch (error) {
+      showError("Gagal menghapus data anak", error);
     }
   };
 
@@ -210,7 +223,11 @@ const BabyManagement: React.FC = () => {
   };
 
   const handleUpdateChild = async () => {
-    await fetchChildren(); // refresh data dari Supabase
+    try {
+      await fetchChildren();
+    } catch (error) {
+      showError("Gagal memperbarui data anak", error);
+    }
   };
 
   const openCreateBabyModal = async (open: boolean) => {

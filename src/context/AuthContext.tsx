@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { supabase } from '../supabaseClient';
 import { AuthContext } from './auth-context';
+import { extractErrorMessage } from '../utils/feedback';
 
 
 export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
@@ -30,16 +31,32 @@ export const AuthContextProvider = ({ children }: { children: ReactNode }) => {
     email: string;
     password: string;
   }) => {
-    const { error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-    if (error) return { success: false, error: error.message };
-    return { success: true };
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+
+      return { success: true };
+    } catch (error) {
+      const message = extractErrorMessage(error, 'Gagal masuk ke akun');
+      return { success: false, error: message };
+    }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
   };
 
   return (
