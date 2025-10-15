@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Users, Baby, Stethoscope, TrendingUp } from 'lucide-react';
 import BarChart from '../components/Dashboard/BarChart';
 import Example from '../components/Dashboard/PieChart';
 import { supabase } from '../supabaseClient';
+import { showError } from '../utils/feedback';
 
 interface AnalisisRow {
   status_tinggi: string | null;
@@ -37,29 +38,38 @@ const Dashboard: React.FC = () => {
 
   /* statistik & trending */
   const [trend, setTrend] = useState({ parents: 0, babies: 0, checkups: 0});
+  const [dashboardHistory, setDashboardHistory] = useState<Snapshot[]>(() => loadHistory());
 
   /* fetch pie tetap */
   useEffect(() => {
     const fetchPieByGender = async () => {
-      const { data, error } = await supabase
-        .from('Analisis')
-        .select('status_tinggi, status_berat, id_anak!inner(gender)');
-      if (error) return console.error(error);
-      const rows = data as unknown as AnalisisRow[];
-      const count = (arr: any[], key: 'status_tinggi' | 'status_berat') =>
-        arr.reduce<Record<string, number>>((acc, r) => {
-          const v = r[key] ?? 'Tidak Diketahui';
-          acc[v] = (acc[v] || 0) + 1;
-          return acc;
-        }, {});
-      const toPie = (obj: Record<string, number>) =>
-        Object.entries(obj).map(([name, value]) => ({ name, value }));
-      const male = rows.filter(r => r.id_anak.gender === 'boys');
-      const female = rows.filter(r => r.id_anak.gender === 'girls');
-      setMaleHeight(toPie(count(male, 'status_tinggi')));
-      setMaleWeight(toPie(count(male, 'status_berat')));
-      setFemaleHeight(toPie(count(female, 'status_tinggi')));
-      setFemaleWeight(toPie(count(female, 'status_berat')));
+      try {
+        const { data, error } = await supabase
+          .from('Analisis')
+          .select('status_tinggi, status_berat, id_anak!inner(gender)');
+
+        if (error) {
+          throw error;
+        }
+
+        const rows = (data ?? []) as unknown as AnalisisRow[];
+        const count = (arr: AnalisisRow[], key: 'status_tinggi' | 'status_berat') =>
+          arr.reduce<Record<string, number>>((acc, r) => {
+            const value = r[key] ?? 'Tidak Diketahui';
+            acc[value] = (acc[value] || 0) + 1;
+            return acc;
+          }, {});
+        const toPie = (obj: Record<string, number>) =>
+          Object.entries(obj).map(([name, value]) => ({ name, value }));
+        const male = rows.filter(r => r.id_anak.gender === 'boys');
+        const female = rows.filter(r => r.id_anak.gender === 'girls');
+        setMaleHeight(toPie(count(male, 'status_tinggi')));
+        setMaleWeight(toPie(count(male, 'status_berat')));
+        setFemaleHeight(toPie(count(female, 'status_tinggi')));
+        setFemaleWeight(toPie(count(female, 'status_berat')));
+      } catch (error) {
+        showError('Gagal memuat distribusi status gizi', error);
+      }
     };
     fetchPieByGender();
   }, []);
@@ -67,53 +77,69 @@ const Dashboard: React.FC = () => {
   /* fetch angka & hitung trending */
   useEffect(() => {
     const fetchStats = async () => {
-      const [
-        { count: parents },
-        { count: babies },
-        { count: checkups },
-      ] = await Promise.all([
-        supabase.from('DataOrangTua').select('*', { count: 'exact', head: true }),
-        supabase.from('DataAnak').select('*', { count: 'exact', head: true }),
-        supabase.from('Analisis').select('*', { count: 'exact', head: true }),
-        supabase
-          .from('Analisis')
-          .select('status_tinggi')
-          .or('status_tinggi.eq.Stunting,status_tinggi.eq.Sangat Pendek'),
-      ]);
+      try {
+        const [parentsRes, babiesRes, checkupsRes] = await Promise.all([
+          supabase.from('DataOrangTua').select('*', { count: 'exact', head: true }),
+          supabase.from('DataAnak').select('*', { count: 'exact', head: true }),
+          supabase.from('Analisis').select('*', { count: 'exact', head: true }),
+        ]);
 
-      /* simpan / update hari ini */
-      const history = loadHistory();
-      const todayStr = today();
-      const todayData = {
-        date: todayStr,
-        parents: parents ?? 0,
-        babies: babies ?? 0,
-        checkups: checkups ?? 0,
-      };
-      const idx = history.findIndex(h => h.date === todayStr);
-      idx === -1 ? history.push(todayData) : (history[idx] = todayData);
-      saveHistory(history);
+        if (parentsRes.error) throw parentsRes.error;
+        if (babiesRes.error) throw babiesRes.error;
+        if (checkupsRes.error) throw checkupsRes.error;
 
-      /* bandingkan kemarin */
-      const y = history.find(h => h.date === new Date(Date.now() - 86400000).toISOString().slice(0, 10)) || {
-        parents: 0,
-        babies: 0,
-        checkups: 0,
-      };
-      setTrend({
-        parents: (parents ?? 0) - y.parents,
-        babies: (babies ?? 0) - y.babies,
-        checkups: (checkups ?? 0) - y.checkups
-      });
+        const parents = parentsRes.count ?? 0;
+        const babies = babiesRes.count ?? 0;
+        const checkups = checkupsRes.count ?? 0;
+
+        /* simpan / update hari ini */
+        const history = loadHistory();
+        const todayStr = today();
+        const todayData = {
+          date: todayStr,
+          parents,
+          babies,
+          checkups,
+        };
+        const idx = history.findIndex(h => h.date === todayStr);
+        idx === -1 ? history.push(todayData) : (history[idx] = todayData);
+        saveHistory(history);
+        setDashboardHistory([...history]);
+
+        /* bandingkan kemarin */
+        const y = history.find(h => h.date === new Date(Date.now() - 86400000).toISOString().slice(0, 10)) || {
+          parents: 0,
+          babies: 0,
+          checkups: 0,
+        };
+        setTrend({
+          parents: parents - y.parents,
+          babies: babies - y.babies,
+          checkups: checkups - y.checkups
+        });
+      } catch (error) {
+        showError('Gagal memuat statistik dashboard', error);
+      }
     };
     fetchStats();
   }, []);
 
+  const todaySnapshot = useMemo(() => {
+    return (
+      dashboardHistory.find(h => h.date === today()) || {
+        date: today(),
+        parents: 0,
+        babies: 0,
+        checkups: 0,
+      }
+    );
+  }, [dashboardHistory]);
+
   /* stats card dengan trending */
   const stats = [
-    { name: 'Total Orang Tua', stat: (loadHistory().find(h=>h.date===today())?.parents ?? 0).toLocaleString(), icon: Users, change: `${trend.parents >= 0 ? '+' : ''}${trend.parents}`, color: 'blue' },
-    { name: 'Total Bayi', stat: (loadHistory().find(h=>h.date===today())?.babies ?? 0).toLocaleString(), icon: Baby, change: `${trend.babies >= 0 ? '+' : ''}${trend.babies}`, color: 'blue' },
-    { name: 'Pemeriksaan Hari Ini', stat: (loadHistory().find(h=>h.date===today())?.checkups ?? 0).toLocaleString(), icon: Stethoscope, change: `${trend.checkups >= 0 ? '+' : ''}${trend.checkups}`, color: 'blue' },
+    { name: 'Total Orang Tua', stat: (todaySnapshot.parents ?? 0).toLocaleString(), icon: Users, change: `${trend.parents >= 0 ? '+' : ''}${trend.parents}`, color: 'blue' },
+    { name: 'Total Bayi', stat: (todaySnapshot.babies ?? 0).toLocaleString(), icon: Baby, change: `${trend.babies >= 0 ? '+' : ''}${trend.babies}`, color: 'blue' },
+    { name: 'Pemeriksaan Hari Ini', stat: (todaySnapshot.checkups ?? 0).toLocaleString(), icon: Stethoscope, change: `${trend.checkups >= 0 ? '+' : ''}${trend.checkups}`, color: 'blue' },
   ];
 
   /* ---------- render tetap sama ---------- */

@@ -4,7 +4,7 @@ import { z } from "zod"
 import type { EditChildProps, Child } from "../../types/children"
 import { childrenSchema } from "../../schemas/children"
 import { supabase } from "../../supabaseClient"
-import { toast } from "sonner"
+import { showError, showSuccess } from "../../utils/feedback"
 import { useEffect, useState } from "react"
 import type { Parent } from "../../types/parent"
 
@@ -36,34 +36,43 @@ export default function BabyData({child, updateBaby} : IProps){
             ...data,
             id_orang_tua: Number(data.id_orang_tua as string)
         }
-        console.log(payload)
-        const {data: returned, error} = await supabase.from('DataAnak').update([payload]).eq('id', child.id).select().single();
 
-        if(error){
-            toast.error("Gagal menambahkan data anak");
-            console.log(error);
-            return;
-        } else {
-            if(returned){
-                toast.success("Data anak berhasil diperbarui");
+        try {
+            const { data: returned, error } = await supabase
+                .from('DataAnak')
+                .update([payload])
+                .eq('id', child.id)
+                .select()
+                .single();
+
+            if (error) {
+                throw error;
+            }
+
+            if (returned) {
+                showSuccess("Data anak berhasil diperbarui");
                 updateBaby(returned.id);
             }
+        } catch (error) {
+            showError("Gagal memperbarui data anak", error);
         }
     }
 
     const onError = (error: unknown) => {
-        console.log(error);
-        toast.error("Gagal menambahkan data anak");
+        showError("Gagal memvalidasi data anak", error);
     }
 
     const fetchParents = async() => {
-        const {data, error} = await supabase.from('DataOrangTua').select();
-        if(error){
-            console.log(error);
-            return;
-        }
-        if(data){
-            setParents(data);
+        try {
+            const { data, error } = await supabase.from('DataOrangTua').select();
+            if (error) {
+                throw error;
+            }
+            if (data) {
+                setParents(data);
+            }
+        } catch (error) {
+            showError("Gagal memuat data orang tua", error);
         }
     }
 

@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Search, Plus, MapPin, Users, TrendingUp, Phone, Mail, Eye, Edit, Trash2 } from "lucide-react";
 import { supabase } from "../supabaseClient";
 import type { Parent } from "../types/parent";
 import type { Child } from "../types/children";
+import { showError, showSuccess } from "../utils/feedback";
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -38,31 +39,45 @@ const ParentManagement: React.FC = () => {
   });
 
   /* fetch data */
-  const fetchParents = async () => {
-    const { data, error } = await supabase.from("DataOrangTua").select("*");
-    if (error) console.error("Error fetching parents:", error);
-    else setParents(data || []);
-  };
+  const fetchParents = useCallback(async () => {
+    try {
+      const { data, error } = await supabase.from("DataOrangTua").select("*");
+      if (error) {
+        throw error;
+      }
+      setParents(data || []);
+    } catch (error) {
+      showError("Gagal memuat data orang tua", error);
+    }
+  }, []);
 
-  const fetchChildren = async () => {
-    const { data, error } = await supabase
-      .from("DataAnak")
-      .select(`*, DataOrangTua(id, nama_ayah, nama_ibu)`);
-    if (error) console.error("Error fetching children:", error);
-    else setChildren(data || []);
-  };
+  const fetchChildren = useCallback(async () => {
+    try {
+      const { data, error } = await supabase
+        .from("DataAnak")
+        .select(`*, DataOrangTua(id, nama_ayah, nama_ibu)`);
+
+      if (error) {
+        throw error;
+      }
+
+      setChildren(data || []);
+    } catch (error) {
+      showError("Gagal memuat data anak", error);
+    }
+  }, []);
 
   useEffect(() => {
     fetchParents();
     fetchChildren();
-  }, []);
+  }, [fetchParents, fetchChildren]);
 
   /* statistik + trending per-hari */
   const totalParents = parents.length;
   const aktifParents = parents.filter((p) => p.status_aktif === "Aktif").length;
   const totalChildrenCount = children.length;
 
-  const [trend, setTrend] = useState({ total: 0, aktif: 0, anak: 0 });
+  const [trend, setTrend] = useState({ total: 0, aktif: 0, anak: 0, inactive: 0 });
 
   useEffect(() => {
     const history = loadHistory();
@@ -86,10 +101,13 @@ const ParentManagement: React.FC = () => {
       aktif: 0,
       anak: 0,
     };
+    const inactiveToday = totalParents - aktifParents;
+    const inactiveYesterday = y.total - y.aktif;
     setTrend({
       total: totalParents - y.total,
       aktif: aktifParents - y.aktif,
       anak: totalChildrenCount - y.anak,
+      inactive: inactiveToday - inactiveYesterday,
     });
   }, [totalParents, aktifParents, totalChildrenCount]);
 
@@ -111,7 +129,7 @@ const ParentManagement: React.FC = () => {
     {
       name: "Tidak Aktif",
       stat: (totalParents - aktifParents).toLocaleString("id-ID"),
-      change: `${(totalParents - aktifParents - (loadHistory().find(h=>h.date===new Date(Date.now()-86400000).toISOString().slice(0,10))?.aktif || 0))}`,
+      change: `${trend.inactive >= 0 ? "+" : ""}${trend.inactive}`,
       color: "red",
       icon: Users,
     },
@@ -127,11 +145,18 @@ const ParentManagement: React.FC = () => {
   /* tambah data */
   const handleAddParent = async (e: React.FormEvent) => {
     e.preventDefault();
-    const { error } = await supabase.from("DataOrangTua").insert([formData]);
-    if (!error) {
+    try {
+      const { error } = await supabase.from("DataOrangTua").insert([formData]);
+      if (error) {
+        throw error;
+      }
+
       setShowAddModal(false);
       setFormData({ nama: "", email: "", no_hp: "" });
-      fetchParents();
+      await fetchParents();
+      showSuccess("Data orang tua berhasil ditambahkan");
+    } catch (error) {
+      showError("Gagal menambahkan data orang tua", error);
     }
   };
 

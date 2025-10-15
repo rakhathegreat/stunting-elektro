@@ -10,6 +10,7 @@ import {
     ResponsiveContainer,
 } from 'recharts';
 import { supabase } from '../../supabaseClient';
+import { extractErrorMessage, showError } from '../../utils/feedback';
 
 interface Analisis {
     status_tinggi: string;
@@ -48,8 +49,9 @@ const StackedBarChartComponent: React.FC = () => {
                 .order('bulan', { ascending: true });
 
             if (error) {
-                setError(error.message);
-                console.error('Error fetching growth data:', error);
+                const message = extractErrorMessage(error, 'Gagal memuat data grafik');
+                setError(message);
+                showError('Gagal memuat data grafik', error);
             } else if (data) {
                 // Group data by bulan
                 const groupedByBulan: Record<number, ChartData> = {};
@@ -71,7 +73,7 @@ const StackedBarChartComponent: React.FC = () => {
                     }
 
                     // Hitung berdasarkan status berat
-                    switch (item.status_berat.toLowerCase()) {
+                    switch ((item.status_berat || '').toLowerCase()) {
                         case 'gemuk':
                             groupedByBulan[bulan].gemuk++;
                             break;
@@ -87,7 +89,7 @@ const StackedBarChartComponent: React.FC = () => {
                     }
 
                     // Hitung berdasarkan status tinggi
-                    switch (item.status_tinggi.toLowerCase()) {
+                    switch ((item.status_tinggi || '').toLowerCase()) {
                         case 'tinggi':
                             groupedByBulan[bulan].tinggi++;
                             break;
@@ -110,8 +112,9 @@ const StackedBarChartComponent: React.FC = () => {
                 setChartData(chartDataArray);
             }
         } catch (err) {
-            console.error('Unexpected error:', err);
-            setError('Terjadi kesalahan saat memuat data.');
+            const message = extractErrorMessage(err, 'Terjadi kesalahan saat memuat data.');
+            setError(message);
+            showError('Terjadi kesalahan saat memuat data.', err);
         } finally {
             setLoading(false);
         }

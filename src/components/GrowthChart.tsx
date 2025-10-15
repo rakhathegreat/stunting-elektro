@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   LineChart,
   Line,
@@ -11,6 +11,7 @@ import {
 } from "recharts";
 import { whoStandards } from "../data/whoStandards";
 import { supabase } from "../supabaseClient";
+import { showError } from "../utils/feedback";
 
 interface GrowthChartProps {
   gender: string;
@@ -21,7 +22,7 @@ interface GrowthChartProps {
 const GrowthChart: React.FC<GrowthChartProps> = ({ gender, id, type }) => {
   const [growthData, setGrowthData] = useState<any[]>([]);
 
-  const fetchGrowthData = async () => {
+  const fetchGrowthData = useCallback(async () => {
     if (!id) return;
 
     try {
@@ -32,18 +33,18 @@ const GrowthChart: React.FC<GrowthChartProps> = ({ gender, id, type }) => {
         .order("bulan", { ascending: true });
 
       if (error) {
-        console.error("Error fetching growth data:", error);
-      } else {
-        setGrowthData(growth || []);
+        throw error;
       }
-    } catch (err) {
-      console.error("Unexpected error:", err);
+
+      setGrowthData(growth || []);
+    } catch (error) {
+      showError("Gagal memuat data pertumbuhan", error);
     }
-  };
+  }, [id]);
 
   useEffect(() => {
     fetchGrowthData();
-  }, [id]);
+  }, [fetchGrowthData]);
 
   const height = gender === "Laki-laki" ? whoStandards.heightBoys : whoStandards.heightGirls;
   const weight = gender === "Laki-laki" ? whoStandards.weightBoys : whoStandards.weightGirls;

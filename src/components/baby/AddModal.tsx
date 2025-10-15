@@ -2,6 +2,7 @@ import Input from "../Input";
 import { useState, useEffect } from "react";
 import { supabase } from "../../supabaseClient";
 import { type RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { extractErrorMessage, showError, showSuccess } from "../../utils/feedback";
 
 interface AddModalProps {
   onClose: () => void;
@@ -37,33 +38,40 @@ const AddModal: React.FC<AddModalProps> = ({ onClose }) => {
   const [error, setError] = useState<string | null>(null);
 
   const fetchRegister = async () => {
-    const { data, error } = await supabase
-      .from("DataAnak")
-      .select("*")
-      .or('nama.is.null,nama.eq.""');
+    try {
+      const { data, error } = await supabase
+        .from("DataAnak")
+        .select("*")
+        .or('nama.is.null,nama.eq.""');
 
-    if (error) {
-      console.error("Error fetching children:", error);
-    }
-
-    if (data?.length === 0) {
-      setWaitingCard(true);
-    } else {
-      setWaitingCard(false);
-      setChildren(data || []);
-      // Isi form dengan data dari kartu yang terdeteksi
-      if (data && data.length > 0) {
-        setFormData({
-          ...data[0],
-          nama: data[0].nama || "",
-          tanggal_lahir: data[0].tanggal_lahir || "",
-          umur: data[0].umur || 0,
-          gender: data[0].gender || "",
-          id_orang_tua: data[0].id_orang_tua || "",
-          alergi: data[0].alergi || "",
-          catatan: data[0].catatan || ""
-        });
+      if (error) {
+        throw error;
       }
+
+      if (data?.length === 0) {
+        setWaitingCard(true);
+        setChildren([]);
+      } else {
+        setWaitingCard(false);
+        setChildren(data || []);
+        if (data && data.length > 0) {
+          setFormData({
+            ...data[0],
+            nama: data[0].nama || "",
+            tanggal_lahir: data[0].tanggal_lahir || "",
+            umur: data[0].umur || 0,
+            gender: data[0].gender || "",
+            id_orang_tua: data[0].id_orang_tua || "",
+            alergi: data[0].alergi || "",
+            catatan: data[0].catatan || ""
+          });
+        }
+      }
+      setError(null);
+    } catch (error) {
+      const message = extractErrorMessage(error, "Gagal memuat data kartu anak");
+      setError(message);
+      showError("Gagal memuat data kartu anak", error);
     }
   };
 
@@ -100,7 +108,7 @@ const AddModal: React.FC<AddModalProps> = ({ onClose }) => {
       }
 
       const child = children[0];
-      
+
       const { error } = await supabase
         .from('DataAnak')
         .update({
@@ -116,11 +124,13 @@ const AddModal: React.FC<AddModalProps> = ({ onClose }) => {
         .eq('id', child.id);
 
       if (error) throw error;
-      
+
+      showSuccess('Data anak berhasil disimpan');
       onClose();
-    } catch (error: any) {
-      setError(error.message || "Gagal menyimpan data");
-      console.error("Error updating child:", error);
+    } catch (error) {
+      const message = extractErrorMessage(error, "Gagal menyimpan data");
+      setError(message);
+      showError("Gagal menyimpan data", error);
     } finally {
       setLoading(false);
     }
