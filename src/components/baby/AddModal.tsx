@@ -1,315 +1,286 @@
-import Input from "../Input";
-import { useState, useEffect } from "react";
-import { supabase } from "../../supabaseClient";
-import { type RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from 'react';
+import { toast } from 'sonner';
+import Input from '../Input';
+import { usePendingChildRegistration } from '../../hooks/usePendingChildRegistration';
+import { updateChild } from '../../services/childService';
 
 interface AddModalProps {
   onClose: () => void;
 }
 
-interface FormData {
-  id: string;
+interface FormState {
   nama: string;
   tanggal_lahir: string;
-  umur: number;
   gender: string;
   id_orang_tua: string;
   alergi: string;
   catatan: string;
 }
 
-const initialFormData: FormData = {
-  id: "",
-  nama: "",
-  tanggal_lahir: "",
-  umur: 0,
-  gender: "",
-  id_orang_tua: "",
-  alergi: "",
-  catatan: ""
+const initialFormState: FormState = {
+  nama: '',
+  tanggal_lahir: '',
+  gender: '',
+  id_orang_tua: '',
+  alergi: '',
+  catatan: '',
 };
 
-const AddModal: React.FC<AddModalProps> = ({ onClose }) => {
-  const [children, setChildren] = useState<FormData[]>([]);
-  const [formData, setFormData] = useState<FormData>(initialFormData);
-  const [loading, setLoading] = useState(false);
-  const [waitingCard, setWaitingCard] = useState(true);
+const calculateAgeInMonths = (value: string): number => {
+  if (!value) {
+    return 0;
+  }
+
+  const today = new Date();
+  const birthDate = new Date(value);
+
+  let months = (today.getFullYear() - birthDate.getFullYear()) * 12;
+  months += today.getMonth() - birthDate.getMonth();
+
+  if (today.getDate() < birthDate.getDate()) {
+    months -= 1;
+  }
+
+  return Math.max(months, 0);
+};
+
+const AddModal = ({ onClose }: AddModalProps) => {
+  const { pendingChild, isWaiting, isLoading, error: pendingError, refresh } = usePendingChildRegistration();
+  const [formData, setFormData] = useState<FormState>(initialFormState);
   const [error, setError] = useState<string | null>(null);
-
-  const fetchRegister = async () => {
-    const { data, error } = await supabase
-      .from("DataAnak")
-      .select("*")
-      .or('nama.is.null,nama.eq.""');
-
-    if (error) {
-      console.error("Error fetching children:", error);
-    }
-
-    if (data?.length === 0) {
-      setWaitingCard(true);
-    } else {
-      setWaitingCard(false);
-      setChildren(data || []);
-      // Isi form dengan data dari kartu yang terdeteksi
-      if (data && data.length > 0) {
-        setFormData({
-          ...data[0],
-          nama: data[0].nama || "",
-          tanggal_lahir: data[0].tanggal_lahir || "",
-          umur: data[0].umur || 0,
-          gender: data[0].gender || "",
-          id_orang_tua: data[0].id_orang_tua || "",
-          alergi: data[0].alergi || "",
-          catatan: data[0].catatan || ""
-        });
-      }
-    }
-  };
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
-    fetchRegister();
+    if (pendingChild) {
+      setFormData({
+        nama: pendingChild.nama ?? '',
+        tanggal_lahir: pendingChild.tanggal_lahir ?? '',
+        gender: pendingChild.gender ?? '',
+        id_orang_tua: pendingChild.id_orang_tua ?? '',
+        alergi: pendingChild.alergi ?? '',
+        catatan: pendingChild.catatan ?? '',
+      });
+      setError(null);
+    } else {
+      setFormData(initialFormState);
+    }
+  }, [pendingChild]);
 
-    const subscription = supabase
-      .channel('public:DataAnak')
-      .on<RealtimePostgresChangesPayload<FormData>>(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'DataAnak' },
-        (payload) => {
-          const newData = payload.new as FormData | undefined;
-          if (!newData?.nama) {
-            fetchRegister();
-          }
-        }
-      )
-      .subscribe();
+  const ageInMonths = useMemo(
+    () => (formData.tanggal_lahir ? calculateAgeInMonths(formData.tanggal_lahir) : null),
+    [formData.tanggal_lahir],
+  );
 
-    return () => {
-      supabase.removeChannel(subscription);
+  const handleChange = <T extends HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>(
+    field: keyof FormState,
+  ) =>
+    (event: ChangeEvent<T>) => {
+      const { value } = event.target;
+      setFormData((prev) => ({
+        ...prev,
+        [field]: value,
+      }));
     };
-  }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+
+    if (!pendingChild?.id) {
+      const message = 'Tidak ada data anak yang terdeteksi';
+      setError(message);
+      toast.error(message);
+      return;
+    }
+
+    setIsSaving(true);
     setError(null);
 
     try {
-      if (children.length === 0) {
-        throw new Error("Tidak ada data anak yang dipilih");
-      }
+      await updateChild(pendingChild.id, {
+        nama: formData.nama,
+        tanggal_lahir: formData.tanggal_lahir,
+        gender: formData.gender,
+        id_orang_tua: formData.id_orang_tua,
+        alergi: formData.alergi,
+        catatan: formData.catatan,
+        umur: typeof ageInMonths === 'number' ? ageInMonths : 0,
+        updated_at: new Date().toISOString(),
+      });
 
-      const child = children[0];
-      
-      const { error } = await supabase
-        .from('DataAnak')
-        .update({
-          nama: formData.nama,
-          tanggal_lahir: formData.tanggal_lahir,
-          umur: formData.umur,
-          gender: formData.gender,
-          id_orang_tua: formData.id_orang_tua,
-          alergi: formData.alergi,
-          catatan: formData.catatan,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', child.id);
-
-      if (error) throw error;
-      
+      toast.success('Data anak berhasil diperbarui');
+      await refresh();
       onClose();
-    } catch (error: any) {
-      setError(error.message || "Gagal menyimpan data");
-      console.error("Error updating child:", error);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Gagal menyimpan data anak';
+      setError(message);
+      toast.error(message);
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
 
-  const ageCalculate = (dateString: string): number => {
-    if (!dateString) return 0;
-    
-    const today = new Date();
-    const birthDate = new Date(dateString);
-    let age = today.getFullYear() - birthDate.getFullYear();
-    const m = today.getMonth() - birthDate.getMonth();
-    
-    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-      age--;
-    }
-    
-    return age * 12 + (today.getMonth() - birthDate.getMonth() + (today.getDate() < birthDate.getDate() ? -1 : 0));
-  };
-
-  useEffect(() => {
-    if (formData.tanggal_lahir) {
-      const calculatedAge = ageCalculate(formData.tanggal_lahir);
-      
-      // Update formData.umur dengan umur yang sudah dihitung (dalam bulan)
-      setFormData(prev => ({
-        ...prev,
-        umur: calculatedAge
-      }));
-    }
-  }, [formData.tanggal_lahir]);
+  const combinedError = error ?? pendingError;
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center z-50">
-      <div 
-        className="absolute inset-0 bg-black/50" 
-        onClick={onClose}
-        aria-hidden="true"
-      />
-      
-      <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-xl z-10 mx-4">
-        {waitingCard ? (
-          <div className="relative w-full max-w-4xl bg-white rounded-2xl z-10 mx-4">
-              {/* Header */}
-              <div className="flex justify-between items-center px-6 py-5 border-b border-gray-200">
-                <h3 className="text-xl font-semibold text-gray-900">Tambah Data Anak</h3>
-                <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
+    <div className="fixed inset-0 z-50 flex items-center justify-center">
+      <div className="absolute inset-0 bg-black/50" onClick={onClose} aria-hidden="true" />
 
-              {/* Body */}
-              <div className="flex flex-col items-center justify-center h-full py-20">
-                <div className="w-16 h-16 bg-blue-100 rounded-full mx-auto mb-4 flex items-center justify-center">
-                  <svg className="w-8 h-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v6a2 2 0 002 2h4a2 2 0 002-2V5z" />
-                  </svg>
-                </div>
-                <h2 className="text-xl text-gray-900 font-semibold mb-2">Menunggu Kartu RFID</h2>
-                <p className="text-gray-500 font-medium mb-4">Silakan tempelkan kartu RFID pada reader</p>
-                
-                {error && (
-                  <div className="mt-4 p-3 bg-red-100 text-red-700 rounded-lg">
-                    <p className="text-sm">{error}</p>
-                  </div>
-                )}
+      <div className="relative z-10 mx-4 w-full max-w-4xl rounded-2xl bg-white shadow-xl">
+        {isWaiting ? (
+          <div className="relative mx-4 w-full max-w-4xl rounded-2xl bg-white">
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-5">
+              <h3 className="text-xl font-semibold text-gray-900">Tambah Data Anak</h3>
+              <button type="button" onClick={onClose} className="text-gray-400 transition hover:text-gray-600">
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="flex h-full flex-col items-center justify-center gap-4 py-20">
+              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-blue-100">
+                <svg className="h-8 w-8 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v6a2 2 0 002 2h4a2 2 0 002-2V5z"
+                  />
+                </svg>
               </div>
+              <h2 className="text-xl font-semibold text-gray-900">Menunggu Kartu RFID</h2>
+              <p className="font-medium text-gray-500">Silakan tempelkan kartu RFID pada reader</p>
+
+              {(isLoading || isSaving) && (
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+                  Memuat data terbaru...
+                </div>
+              )}
+
+              {combinedError ? (
+                <div className="mt-2 rounded-lg bg-red-100 px-3 py-2 text-sm text-red-700">{combinedError}</div>
+              ) : null}
+            </div>
           </div>
         ) : (
-          <div className="relative w-full max-w-4xl bg-white rounded-2xl shadow-xl z-10 mx-4">
-            <form onSubmit={handleSubmit}>
-              {/* Header */}
-              <div className="flex justify-between items-center px-6 py-5 border-b border-gray-200">
-                <h3 className="text-xl font-semibold text-gray-900">Edit Data Anak</h3>
-                <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600">
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
-              </div>
+          <form onSubmit={handleSubmit} className="relative mx-4 w-full max-w-4xl rounded-2xl bg-white">
+            <div className="flex items-center justify-between border-b border-gray-200 px-6 py-5">
+              <h3 className="text-xl font-semibold text-gray-900">Edit Data Anak</h3>
+              <button type="button" onClick={onClose} className="text-gray-400 transition hover:text-gray-600">
+                <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
 
-              {/* Body */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-6">
-                {/* Kolom Kiri */}
-                <div className="space-y-5">
-                  <div>
-                    <Input 
-                      name="Nama Anak" 
-                      value={formData.nama}
-                      onChange={(e) => setFormData({...formData, nama: e.target.value})}
-                      placeholder="Masukkan nama lengkap anak"
-                    />
-                  </div>
+            <div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-2">
+              <div className="space-y-5">
+                <Input
+                  name="Nama Anak"
+                  value={formData.nama}
+                  onChange={handleChange<HTMLInputElement>('nama')}
+                  placeholder="Masukkan nama lengkap anak"
+                  required
+                />
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Input 
-                        name="Tanggal Lahir"
-                        placeholder="Contoh: 2000-01-01"
-                        type="date"
-                        value={formData.tanggal_lahir}
-                        onChange={(e) => setFormData({...formData, tanggal_lahir: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <Input 
-                        name="Umur (Bulan)"
-                        type="number"
-                        value={formData.umur} // Gunakan nilai dari state yang sudah dihitung
-                        onChange={(e) => setFormData({...formData, umur: parseInt(e.target.value)})}
-                        placeholder="Contoh: 36"
-                        disabled={true} // Tetap disabled karena dihitung otomatis
-                      />
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Jenis Kelamin</label>
-                      <select 
-                        value={formData.gender}
-                        onChange={(e) => setFormData({...formData, gender: e.target.value})}
-                        name="gender"
-                        className={`py-3 px-4 block w-full border border-gray-400 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 ${!formData.gender ? "text-gray-500" : "text-gray-900"}`}
-                        required
-                      >
-                        <option value="" disabled>Pilih jenis kelamin</option>
-                        <option value="boys">Laki-laki</option>
-                        <option value="girls">Perempuan</option>
-                      </select>
-                    </div>
-                    <div>
-                      <Input 
-                        name="No KK"
-                        value={formData.id_orang_tua}
-                        onChange={(e) => setFormData({...formData, id_orang_tua: e.target.value})}
-                        placeholder="Masukkan nomor kartu keluarga"
-                      />
-                    </div>
-                  </div>
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                  <Input
+                    name="Tanggal Lahir"
+                    type="date"
+                    value={formData.tanggal_lahir}
+                    onChange={handleChange<HTMLInputElement>('tanggal_lahir')}
+                    placeholder="Contoh: 2000-01-01"
+                    required
+                  />
+                  <Input
+                    name="Umur (Bulan)"
+                    type="number"
+                    value={typeof ageInMonths === 'number' ? ageInMonths : ''}
+                    placeholder="Contoh: 36"
+                    disabled
+                  />
                 </div>
 
-                {/* Kolom Kanan */}
-                <div className="space-y-5">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                   <div>
-                    <Input 
-                      name="Alergi"
-                      value={formData.alergi}
-                      onChange={(e) => setFormData({...formData, alergi: e.target.value})}
-                      placeholder="Contoh: Kacang, susu sapi, debu"
-                    />
+                    <label className="mb-2 block text-sm font-medium text-gray-700" htmlFor="gender">
+                      Jenis Kelamin
+                    </label>
+                    <select
+                      id="gender"
+                      value={formData.gender}
+                      onChange={handleChange<HTMLSelectElement>('gender')}
+                      className={`block w-full rounded-lg border border-gray-400 px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 ${
+                        formData.gender ? 'text-gray-900' : 'text-gray-500'
+                      }`}
+                      required
+                    >
+                      <option value="" disabled>
+                        Pilih jenis kelamin
+                      </option>
+                      <option value="boys">Laki-laki</option>
+                      <option value="girls">Perempuan</option>
+                    </select>
                   </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Catatan</label>
-                    <textarea 
-                      name="catatan"
-                      rows={4}
-                      value={formData.catatan}
-                      onChange={(e) => setFormData({...formData, catatan: e.target.value})}
-                      placeholder="Masukkan catatan khusus tentang anak"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 resize-none"
-                    />
-                  </div>
+                  <Input
+                    name="No KK"
+                    value={formData.id_orang_tua}
+                    onChange={handleChange<HTMLInputElement>('id_orang_tua')}
+                    placeholder="Masukkan nomor kartu keluarga"
+                    required
+                  />
                 </div>
               </div>
 
-              {/* Footer */}
-              <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200">
-                <button 
-                  type="button"
-                  onClick={onClose}
-                  className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                >
-                  Batal
-                </button>
-                <button 
-                  type="submit"
-                  onClick={handleSubmit}
-                  disabled={loading}
-                  className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
-                >
-                  {loading ? "Menyimpan..." : "Simpan Perubahan"}
-                </button>
+              <div className="space-y-5">
+                <Input
+                  name="Alergi"
+                  value={formData.alergi}
+                  onChange={handleChange<HTMLInputElement>('alergi')}
+                  placeholder="Contoh: Kacang, susu sapi, debu"
+                />
+
+                <div>
+                  <label className="mb-2 block text-sm font-medium text-gray-700" htmlFor="catatan">
+                    Catatan
+                  </label>
+                  <textarea
+                    id="catatan"
+                    name="catatan"
+                    rows={4}
+                    value={formData.catatan}
+                    onChange={handleChange<HTMLTextAreaElement>('catatan')}
+                    placeholder="Masukkan catatan khusus tentang anak"
+                    className="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
-            </form>
-          </div>
+            </div>
+
+            {combinedError ? (
+              <div className="px-6">
+                <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{combinedError}</div>
+              </div>
+            ) : null}
+
+            <div className="flex justify-end gap-3 border-t border-gray-200 px-6 py-4">
+              <button
+                type="button"
+                onClick={onClose}
+                className="rounded-lg bg-gray-100 px-5 py-2.5 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-200"
+              >
+                Batal
+              </button>
+              <button
+                type="submit"
+                disabled={isSaving}
+                className="rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:opacity-50"
+              >
+                {isSaving ? 'Menyimpan...' : 'Simpan Perubahan'}
+              </button>
+            </div>
+          </form>
         )}
       </div>
     </div>
@@ -317,3 +288,4 @@ const AddModal: React.FC<AddModalProps> = ({ onClose }) => {
 };
 
 export default AddModal;
+

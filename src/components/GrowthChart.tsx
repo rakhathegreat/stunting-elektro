@@ -1,129 +1,100 @@
-import React, { useEffect, useState } from "react";
+import { useMemo } from 'react';
 import {
-  LineChart,
+  CartesianGrid,
+  Legend,
   Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
   XAxis,
   YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
-import { whoStandards } from "../data/whoStandards";
-import { supabase } from "../supabaseClient";
+} from 'recharts';
+import type { GrowthRecord } from '../types/growth';
+import { whoStandards } from '../data/whoStandards';
 
 interface GrowthChartProps {
-  gender: string;
-  id: number | undefined;
-  type: string;
+  data: GrowthRecord[];
+  selectedMetric: 'tinggi' | 'berat';
+  gender?: string;
 }
 
-const GrowthChart: React.FC<GrowthChartProps> = ({ gender, id, type }) => {
-  const [growthData, setGrowthData] = useState<any[]>([]);
+const normalizeGender = (gender?: string) => {
+  if (!gender) return 'boys';
+  if (gender.toLowerCase().startsWith('l')) return 'boys';
+  return 'girls';
+};
 
-  const fetchGrowthData = async () => {
-    if (!id) return;
+const GrowthChart = ({ data, selectedMetric, gender: genderProp }: GrowthChartProps) => {
+  const gender = normalizeGender(genderProp);
 
-    try {
-      const { data: growth, error } = await supabase
-        .from("Analisis")
-        .select("*")
-        .eq("id_anak", id)
-        .order("bulan", { ascending: true });
+  const chartData = useMemo(() => {
+    const source =
+      selectedMetric === 'tinggi'
+        ? gender === 'boys'
+          ? whoStandards.heightBoys
+          : whoStandards.heightGirls
+        : gender === 'boys'
+        ? whoStandards.weightBoys
+        : whoStandards.weightGirls;
 
-      if (error) {
-        console.error("Error fetching growth data:", error);
-      } else {
-        setGrowthData(growth || []);
+    const growthMonths = data.map((record) => record.bulan);
+    const filteredSource = source.filter((entry) => growthMonths.includes(entry.bulan));
+
+    return filteredSource.map((entry) => {
+      const record = data.find((item) => item.bulan === entry.bulan);
+      if (selectedMetric === 'tinggi') {
+        return {
+          bulan: entry.bulan,
+          sangat_pendek: entry.sd3neg - 3,
+          pendek: entry.sd2neg,
+          normal: entry.median,
+          tinggi: entry.sd1,
+          anak: record?.tinggi ?? null,
+        };
       }
-    } catch (err) {
-      console.error("Unexpected error:", err);
-    }
-  };
 
-  useEffect(() => {
-    fetchGrowthData();
-  }, [id]);
+      return {
+        bulan: entry.bulan,
+        sangat_kurus: entry.sd3neg,
+        kurus: entry.sd2neg,
+        normal: entry.median,
+        gemuk: entry.sd1,
+        anak: record?.berat ?? null,
+      };
+    });
+  }, [data, selectedMetric, gender]);
 
-  const height = gender === "Laki-laki" ? whoStandards.heightBoys : whoStandards.heightGirls;
-  const weight = gender === "Laki-laki" ? whoStandards.weightBoys : whoStandards.weightGirls;
-
-  // Ambil semua bulan yang ada di growthData
-  const growthMonths = growthData.map((g) => g.bulan);
-  
-
-  // Filter WHO data sesuai bulan di growthData
-  const filteredHeight = height.filter((d) => growthMonths.includes(d.bulan));
-  const filteredWeight = weight.filter((d) => growthMonths.includes(d.bulan));
-
-
-  // Gabungkan WHO + data anak
-  const heightData = filteredHeight.map((d) => {
-    const childRecord = growthData.find((g) => g.bulan === d.bulan);
-    return {
-      bulan: d.bulan,
-      sangat_pendek: d.sd3neg - 3,
-      pendek: d.sd2neg,
-      normal: d.median,
-      tinggi: d.sd1,
-      tinggi_anak: childRecord ? childRecord.tinggi || childRecord.height : null,
-    };
-  });
-
-  const weightData = filteredWeight.map((d) => {
-    const childRecord = growthData.find((g) => g.bulan === d.bulan);
-    return {
-      bulan: d.bulan,
-      sangat_kurus: d.sd3neg,
-      kurus: d.sd2neg,
-      normal: d.median,
-      gemuk: d.sd1,
-      berat_anak: childRecord ? childRecord.berat || childRecord.weight : null,
-    };
-  })
+  const yLabel = selectedMetric === 'tinggi' ? 'Tinggi (cm)' : 'Berat (kg)';
 
   return (
-    <div className="w-full h-96">
-      {type === 'height' ? (
-        <ResponsiveContainer>
-            <LineChart data={heightData} margin={{ top: 20, right: 20, left: 0, bottom: 50 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-                dataKey="bulan"
-                label={{ value: "Usia (bulan)", position: "insideBottom", offset: -5 }}
-            />
-            <YAxis label={{ value: "Tinggi (cm)", angle: -90, position: "insideLeft", offset: 6 }} />
-            <Tooltip />
-            <Legend wrapperStyle={{ paddingTop: "20px" }} />
-            {/* WHO lines */}
-            <Line type="monotone" dataKey="normal" stroke="#82ca9d" strokeDasharray="5 5" opacity={0.5} name="Normal" dot={false} strokeWidth={2} />
-            <Line type="monotone" dataKey="pendek" stroke="#8884d8" strokeDasharray="5 5" opacity={0.5} name="Pendek" dot={false} strokeWidth={2} />
-            <Line type="monotone" dataKey="sangat_pendek" stroke="#ff0000" strokeDasharray="5 5" opacity={0.5} name="Sangat Pendek" dot={false} strokeWidth={2} />
-            <Line type="monotone" dataKey="tinggi" stroke="#ff7300" strokeDasharray="5 5" opacity={0.5} name="Tinggi" dot={false} strokeWidth={2} />
-            <Line type="monotone" dataKey="tinggi_anak" stroke="#6082B6" name="Tinggi Anak" strokeWidth={3} />
-            </LineChart>
-        </ResponsiveContainer>
-      ) : (
-        <ResponsiveContainer>
-            <LineChart data={weightData} margin={{ top: 20, right: 20, left: 0, bottom: 50 }}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis
-                dataKey="bulan"
-                label={{ value: "Usia (bulan)", position: "insideBottom", offset: -5 }}
-            />
-            <YAxis label={{ value: "Berag (kg)", angle: -90, position: "insideLeft", offset: 6 }} />
-            <Tooltip />
-            <Legend wrapperStyle={{ paddingTop: "20px" }} />
-            {/* WHO lines */}
-            <Line type="monotone" dataKey="sangat_kurus" stroke="#ff0000" strokeDasharray={"5 5"} opacity={0.5} name="Sangat Kurus" dot={false} strokeWidth={2} />
-            <Line type="monotone" dataKey="kurus" stroke="#8884d8" strokeDasharray={"5 5"} opacity={0.5} name="Kurus" dot={false} strokeWidth={2} />
-            <Line type="monotone" dataKey="normal" stroke="#82ca9d" strokeDasharray={"5 5"} opacity={0.5} name="Normal" dot={false} strokeWidth={2} />
-            <Line type="monotone" dataKey="gemuk" stroke="#ff7300" strokeDasharray={"5 5"} opacity={0.5} name="Gemuk" dot={false} strokeWidth={2} />
-            {/* Anak line */}
-            <Line type="monotone" dataKey="berat_anak" stroke="#6082B6" name="Berat Anak" strokeWidth={3} />
-            </LineChart>
-        </ResponsiveContainer>   
-      )}
+    <div className="h-96 w-full">
+      <ResponsiveContainer>
+        <LineChart data={chartData} margin={{ top: 20, right: 20, left: 0, bottom: 50 }}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="bulan" label={{ value: 'Usia (bulan)', position: 'insideBottom', offset: -5 }} />
+          <YAxis label={{ value: yLabel, angle: -90, position: 'insideLeft', offset: 6 }} />
+          <Tooltip />
+          <Legend wrapperStyle={{ paddingTop: '20px' }} />
+
+          {selectedMetric === 'tinggi' ? (
+            <>
+              <Line type="monotone" dataKey="normal" stroke="#82ca9d" strokeDasharray="5 5" opacity={0.5} name="Normal" dot={false} strokeWidth={2} />
+              <Line type="monotone" dataKey="pendek" stroke="#8884d8" strokeDasharray="5 5" opacity={0.5} name="Pendek" dot={false} strokeWidth={2} />
+              <Line type="monotone" dataKey="sangat_pendek" stroke="#ff0000" strokeDasharray="5 5" opacity={0.5} name="Sangat Pendek" dot={false} strokeWidth={2} />
+              <Line type="monotone" dataKey="tinggi" stroke="#ff7300" strokeDasharray="5 5" opacity={0.5} name="Tinggi" dot={false} strokeWidth={2} />
+            </>
+          ) : (
+            <>
+              <Line type="monotone" dataKey="sangat_kurus" stroke="#ff0000" strokeDasharray="5 5" opacity={0.5} name="Sangat Kurus" dot={false} strokeWidth={2} />
+              <Line type="monotone" dataKey="kurus" stroke="#8884d8" strokeDasharray="5 5" opacity={0.5} name="Kurus" dot={false} strokeWidth={2} />
+              <Line type="monotone" dataKey="normal" stroke="#82ca9d" strokeDasharray="5 5" opacity={0.5} name="Normal" dot={false} strokeWidth={2} />
+              <Line type="monotone" dataKey="gemuk" stroke="#ff7300" strokeDasharray="5 5" opacity={0.5} name="Gemuk" dot={false} strokeWidth={2} />
+            </>
+          )}
+
+          <Line type="monotone" dataKey="anak" stroke="#6082B6" name="Data Anak" strokeWidth={3} />
+        </LineChart>
+      </ResponsiveContainer>
     </div>
   );
 };

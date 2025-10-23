@@ -1,145 +1,165 @@
-import React, { useEffect, useState } from 'react';
-import { Users, Baby, Stethoscope, TrendingUp } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Baby, Stethoscope, TrendingUp, Users } from 'lucide-react';
 import BarChart from '../components/Dashboard/BarChart';
 import Example from '../components/Dashboard/PieChart';
-import { supabase } from '../supabaseClient';
+import { FullScreenLoader } from '../features/shared/components/FullScreenLoader';
+import { useSupabaseResource } from '../hooks/useSupabaseResource';
+import { getAnalysisRows, getDashboardCounts, type AnalysisRow } from '../services/dashboardService';
 
-interface AnalisisRow {
-  status_tinggi: string | null;
-  status_berat: string | null;
-  id_anak: { gender: string };
-}
-
-/* ---------- helper trending ---------- */
 const today = () => new Date().toISOString().slice(0, 10);
+
 interface Snapshot {
   date: string;
   parents: number;
   babies: number;
   checkups: number;
 }
+
 const loadHistory = (): Snapshot[] => {
   try {
-    return JSON.parse(localStorage.getItem("dashboard_history") || "[]");
+    return JSON.parse(localStorage.getItem('dashboard_history') || '[]');
   } catch {
     return [];
   }
 };
-const saveHistory = (list: Snapshot[]) =>
-  localStorage.setItem("dashboard_history", JSON.stringify(list));
 
-/* ---------- komponen ---------- */
-const Dashboard: React.FC = () => {
-  const [maleHeight, setMaleHeight] = useState<any[]>([]);
-  const [maleWeight, setMaleWeight] = useState<any[]>([]);
-  const [femaleHeight, setFemaleHeight] = useState<any[]>([]);
-  const [femaleWeight, setFemaleWeight] = useState<any[]>([]);
+const saveHistory = (list: Snapshot[]) => {
+  localStorage.setItem('dashboard_history', JSON.stringify(list));
+};
 
-  /* statistik & trending */
-  const [trend, setTrend] = useState({ parents: 0, babies: 0, checkups: 0});
+const useTrend = (counts: { parents: number; babies: number; checkups: number }) => {
+  const [trend, setTrend] = useState({ parents: 0, babies: 0, checkups: 0 });
 
-  /* fetch pie tetap */
   useEffect(() => {
-    const fetchPieByGender = async () => {
-      const { data, error } = await supabase
-        .from('Analisis')
-        .select('status_tinggi, status_berat, id_anak!inner(gender)');
-      if (error) return console.error(error);
-      const rows = data as unknown as AnalisisRow[];
-      const count = (arr: any[], key: 'status_tinggi' | 'status_berat') =>
-        arr.reduce<Record<string, number>>((acc, r) => {
-          const v = r[key] ?? 'Tidak Diketahui';
-          acc[v] = (acc[v] || 0) + 1;
-          return acc;
-        }, {});
-      const toPie = (obj: Record<string, number>) =>
-        Object.entries(obj).map(([name, value]) => ({ name, value }));
-      const male = rows.filter(r => r.id_anak.gender === 'boys');
-      const female = rows.filter(r => r.id_anak.gender === 'girls');
-      setMaleHeight(toPie(count(male, 'status_tinggi')));
-      setMaleWeight(toPie(count(male, 'status_berat')));
-      setFemaleHeight(toPie(count(female, 'status_tinggi')));
-      setFemaleWeight(toPie(count(female, 'status_berat')));
+    if (!counts) return;
+
+    const history = loadHistory();
+    const todayKey = today();
+    const todaySnapshot = { date: todayKey, ...counts };
+    const index = history.findIndex((entry) => entry.date === todayKey);
+    if (index === -1) {
+      history.push(todaySnapshot);
+    } else {
+      history[index] = todaySnapshot;
+    }
+    saveHistory(history);
+
+    const yesterdayKey = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const yesterday = history.find((entry) => entry.date === yesterdayKey) ?? {
+      parents: 0,
+      babies: 0,
+      checkups: 0,
     };
-    fetchPieByGender();
-  }, []);
 
-  /* fetch angka & hitung trending */
-  useEffect(() => {
-    const fetchStats = async () => {
-      const [
-        { count: parents },
-        { count: babies },
-        { count: checkups },
-      ] = await Promise.all([
-        supabase.from('DataOrangTua').select('*', { count: 'exact', head: true }),
-        supabase.from('DataAnak').select('*', { count: 'exact', head: true }),
-        supabase.from('Analisis').select('*', { count: 'exact', head: true }),
-        supabase
-          .from('Analisis')
-          .select('status_tinggi')
-          .or('status_tinggi.eq.Stunting,status_tinggi.eq.Sangat Pendek'),
-      ]);
+    setTrend({
+      parents: counts.parents - yesterday.parents,
+      babies: counts.babies - yesterday.babies,
+      checkups: counts.checkups - yesterday.checkups,
+    });
+  }, [counts]);
 
-      /* simpan / update hari ini */
-      const history = loadHistory();
-      const todayStr = today();
-      const todayData = {
-        date: todayStr,
-        parents: parents ?? 0,
-        babies: babies ?? 0,
-        checkups: checkups ?? 0,
-      };
-      const idx = history.findIndex(h => h.date === todayStr);
-      idx === -1 ? history.push(todayData) : (history[idx] = todayData);
-      saveHistory(history);
+  return trend;
+};
 
-      /* bandingkan kemarin */
-      const y = history.find(h => h.date === new Date(Date.now() - 86400000).toISOString().slice(0, 10)) || {
-        parents: 0,
-        babies: 0,
-        checkups: 0,
-      };
-      setTrend({
-        parents: (parents ?? 0) - y.parents,
-        babies: (babies ?? 0) - y.babies,
-        checkups: (checkups ?? 0) - y.checkups
-      });
+const Dashboard = () => {
+  const {
+    data: counts,
+    isLoading: isCountsLoading,
+    error: countsError,
+  } = useSupabaseResource('dashboard-counts', getDashboardCounts, {
+    initialData: { parents: 0, babies: 0, checkups: 0 },
+  });
+
+  const {
+    data: analysisRows,
+    isLoading: isAnalysisLoading,
+    error: analysisError,
+  } = useSupabaseResource<AnalysisRow[]>('dashboard-analysis', getAnalysisRows, { initialData: [] });
+
+  const trend = useTrend(counts);
+
+  const stats = useMemo(
+    () => [
+      {
+        name: 'Total Orang Tua',
+        stat: counts.parents.toLocaleString(),
+        change: `${trend.parents >= 0 ? '+' : ''}${trend.parents}`,
+        icon: Users,
+        color: 'blue',
+      },
+      {
+        name: 'Total Bayi',
+        stat: counts.babies.toLocaleString(),
+        change: `${trend.babies >= 0 ? '+' : ''}${trend.babies}`,
+        icon: Baby,
+        color: 'blue',
+      },
+      {
+        name: 'Pemeriksaan Hari Ini',
+        stat: counts.checkups.toLocaleString(),
+        change: `${trend.checkups >= 0 ? '+' : ''}${trend.checkups}`,
+        icon: Stethoscope,
+        color: 'blue',
+      },
+    ],
+    [counts, trend],
+  );
+
+  const pieData = useMemo(() => {
+    const countByStatus = (rows: AnalysisRow[], key: 'status_tinggi' | 'status_berat') =>
+      rows.reduce<Record<string, number>>((acc, row) => {
+        const value = row[key] ?? 'Tidak Diketahui';
+        acc[value] = (acc[value] || 0) + 1;
+        return acc;
+      }, {});
+
+    const formatPie = (entries: Record<string, number>) =>
+      Object.entries(entries).map(([name, value]) => ({ name, value }));
+
+    const maleRows = analysisRows.filter((row) => row.id_anak.gender === 'boys');
+    const femaleRows = analysisRows.filter((row) => row.id_anak.gender === 'girls');
+
+    return {
+      maleHeight: formatPie(countByStatus(maleRows, 'status_tinggi')),
+      maleWeight: formatPie(countByStatus(maleRows, 'status_berat')),
+      femaleHeight: formatPie(countByStatus(femaleRows, 'status_tinggi')),
+      femaleWeight: formatPie(countByStatus(femaleRows, 'status_berat')),
     };
-    fetchStats();
-  }, []);
+  }, [analysisRows]);
 
-  /* stats card dengan trending */
-  const stats = [
-    { name: 'Total Orang Tua', stat: (loadHistory().find(h=>h.date===today())?.parents ?? 0).toLocaleString(), icon: Users, change: `${trend.parents >= 0 ? '+' : ''}${trend.parents}`, color: 'blue' },
-    { name: 'Total Bayi', stat: (loadHistory().find(h=>h.date===today())?.babies ?? 0).toLocaleString(), icon: Baby, change: `${trend.babies >= 0 ? '+' : ''}${trend.babies}`, color: 'blue' },
-    { name: 'Pemeriksaan Hari Ini', stat: (loadHistory().find(h=>h.date===today())?.checkups ?? 0).toLocaleString(), icon: Stethoscope, change: `${trend.checkups >= 0 ? '+' : ''}${trend.checkups}`, color: 'blue' },
-  ];
+  if (isCountsLoading && isAnalysisLoading) {
+    return <FullScreenLoader />;
+  }
 
-  /* ---------- render tetap sama ---------- */
+  if (countsError || analysisError) {
+    return (
+      <div className="rounded-xl border border-red-200 bg-red-50 p-6 text-red-600">
+        Terjadi kesalahan saat memuat dashboard. Silakan muat ulang halaman.
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div className="px-6 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 px-6 sm:grid-cols-2 lg:grid-cols-3">
         {stats.map((item) => (
           <div
             key={item.name}
-            className="relative bg-white pt-6 px-6 pb-6 rounded-2xl overflow-hidden hover:shadow-modern-lg transition-all hover:scale-[1.02] shadow-sm"
+            className="relative overflow-hidden rounded-2xl bg-white px-6 pb-6 pt-6 shadow-sm transition-all hover:scale-[1.02] hover:shadow-modern-lg"
           >
             <dt>
-              <div className={`absolute bg-gradient-to-br from-${item.color}-500 to-${item.color}-600 rounded-xl p-3 shadow-modern`}>
+              <div className={`absolute rounded-xl bg-gradient-to-br from-${item.color}-500 to-${item.color}-600 p-3 shadow-modern`}>
                 <item.icon className="h-6 w-6 text-white" aria-hidden="true" />
               </div>
-              <p className="ml-16 text-sm font-semibold text-gray-500 truncate">{item.name}</p>
+              <p className="ml-16 truncate text-sm font-semibold text-gray-500">{item.name}</p>
             </dt>
-            <dd className="ml-16 pb-2 flex items-baseline">
+            <dd className="ml-16 flex items-baseline pb-2">
               <p className="text-3xl font-bold text-gray-900">{item.stat}</p>
               <p
-                className={`ml-3 flex items-baseline text-sm font-semibold ${
-                  Number(item.change) >= 0 ? 'text-green-600' : 'text-red-600'
-                }`}
+                className={`ml-3 flex items-baseline text-sm font-semibold ${Number(item.change) >= 0 ? 'text-green-600' : 'text-red-600'}`}
               >
-                <TrendingUp className="self-center flex-shrink-0 h-4 w-4 text-green-500 mr-1" aria-hidden="true" />
-                <span className="sr-only">{Number(item.change) >= 0 ? 'Increased' : 'Decreased'} by</span>
+                <TrendingUp className="mr-1 h-4 w-4 flex-shrink-0 text-green-500" aria-hidden="true" />
+                <span className="sr-only">{Number(item.change) >= 0 ? 'Meningkat' : 'Menurun'} sebesar</span>
                 {item.change}
               </p>
             </dd>
@@ -147,36 +167,35 @@ const Dashboard: React.FC = () => {
         ))}
       </div>
 
-      {/* bagian grafik tetap sama */}
       <div className="grid grid-cols-1 gap-3 lg:grid-cols-3 lg:grid-rows-2">
         <div className="lg:col-span-3">
-          <div className="glass shadow-modern rounded-2xl border-0">
+          <div className="glass rounded-2xl border-0 shadow-modern">
             <div className="px-4 pt-5 sm:pt-6">
-              <h3 className="text-lg leading-6 font-bold text-gray-900 mb-6">Tren Pemeriksaan Bulanan</h3>
+              <h3 className="mb-6 text-lg font-bold leading-6 text-gray-900">Tren Pemeriksaan Bulanan</h3>
               <BarChart />
             </div>
           </div>
         </div>
 
         <div className="lg:col-span-3 h-fit">
-          <div className="glass shadow-modern rounded-2xl border-0">
+          <div className="glass rounded-2xl border-0 shadow-modern">
             <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg leading-6 font-bold text-gray-900 mb-6">Distribusi Status Gizi</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="border border-gray-300 rounded-2xl p-4">
-                  <h3 className="font-medium mb-2">Laki-laki</h3>
-                  <p className="text-sm text-gray-600 mb-4">Persentase status berat dan tinggi pada anak laki-laki saat ini</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Example data={maleHeight} />
-                    <Example data={maleWeight} />
+              <h3 className="mb-6 text-lg font-bold leading-6 text-gray-900">Distribusi Status Gizi</h3>
+              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                <div className="rounded-2xl border border-gray-300 p-4">
+                  <h3 className="mb-2 font-medium">Laki-laki</h3>
+                  <p className="mb-4 text-sm text-gray-600">Persentase status berat dan tinggi pada anak laki-laki saat ini</p>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <Example data={pieData.maleHeight} />
+                    <Example data={pieData.maleWeight} />
                   </div>
                 </div>
-                <div className="border border-gray-300 rounded-2xl p-4">
-                  <h3 className="font-medium mb-2">Perempuan</h3>
-                  <p className="text-sm text-gray-600 mb-4">Persentase status berat dan tinggi pada anak perempuan saat ini</p>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <Example data={femaleHeight} />
-                    <Example data={femaleWeight} />
+                <div className="rounded-2xl border border-gray-300 p-4">
+                  <h3 className="mb-2 font-medium">Perempuan</h3>
+                  <p className="mb-4 text-sm text-gray-600">Persentase status berat dan tinggi pada anak perempuan saat ini</p>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <Example data={pieData.femaleHeight} />
+                    <Example data={pieData.femaleWeight} />
                   </div>
                 </div>
               </div>

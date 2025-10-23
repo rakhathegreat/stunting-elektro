@@ -1,40 +1,53 @@
+import type { ChangeEventHandler, ReactNode } from 'react';
+
 interface InputProps {
-    name: string,
-    placeholder: string
-    className?: string
-    type?: string
-    value?: string | number
-    onChange?: (e: React.ChangeEvent<HTMLInputElement>) => void
-    required?: boolean
-    disabled?: boolean
+  name: string;
+  placeholder: string;
+  className?: string;
+  type?: string;
+  value?: string | number | null;
+  onChange?: ChangeEventHandler<HTMLInputElement>;
+  required?: boolean;
+  disabled?: boolean;
+  prefix?: ReactNode;
 }
 
-const Input: React.FC<InputProps> = ({ name, placeholder, className, type, value, onChange, disabled}) => {
-    return (
-        <div className="space-y-4">
-            <div>
-                <label
-                htmlFor="hs-validation-name-error"
-                className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                {name}
-                </label>
-                <div className="relative">
-                <input
-                    type={type || "text"}
-                    id="hs-validation-name-error"
-                    name="hs-validation-name-error"
-                    className={`py-3 px-4 block w-full border border-gray-400 rounded-lg text-sm focus:outline-none ${className || ""}`}
-                    placeholder={placeholder}
-                    value={value || ""}
-                    aria-describedby="hs-validation-name-error-helper"
-                    onChange={onChange || undefined}
-                    disabled={disabled || false}
-                />
-                </div>
-            </div>
-        </div>
-    )
-}
+const Input = ({
+  name,
+  placeholder,
+  className = '',
+  type = 'text',
+  value,
+  onChange,
+  required = false,
+  disabled = false,
+  prefix,
+}: InputProps) => {
+  const inputId = name.toLowerCase().replace(/[^a-z0-9]+/g, '-');
 
-export default Input
+  return (
+    <div className="space-y-2">
+      <label htmlFor={inputId} className="block text-sm font-medium text-gray-700">
+        {name}
+      </label>
+      <div className="relative">
+        {prefix ? <div className="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">{prefix}</div> : null}
+        <input
+          type={type}
+          id={inputId}
+          name={inputId}
+          className={`block w-full rounded-lg border border-gray-400 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+            prefix ? 'pl-10' : ''
+          } ${className}`.trim()}
+          placeholder={placeholder}
+          value={value ?? ''}
+          onChange={onChange}
+          required={required}
+          disabled={disabled}
+        />
+      </div>
+    </div>
+  );
+};
+
+export default Input;

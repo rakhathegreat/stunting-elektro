@@ -8,12 +8,8 @@ export const parentSchema = z.object({
     nama_ibu: z.string()
         .min(1, "Nama ibu wajib diisi")
         .min(2, "Nama ibu minimal 2 karakter"),
-    tanggal_lahir_ayah: z.date({
-        message: "Tanggal lahir ayah wajib diisi"
-    }),
-    tanggal_lahir_ibu: z.date({
-        message: "Tanggal lahir ibu wajib diisi"
-    }),
+    tanggal_lahir_ayah: z.string().min(1, "Tanggal lahir ayah wajib diisi"),
+    tanggal_lahir_ibu: z.string().min(1, "Tanggal lahir ibu wajib diisi"),
     no_hp: z.string()
         .min(1, "Nomor HP wajib diisi")
         .min(10, "Nomor HP minimal 10 digit")

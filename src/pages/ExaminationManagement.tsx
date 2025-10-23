@@ -1,114 +1,108 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { Search, Trash2 } from "lucide-react";
-import { supabase } from "../supabaseClient";
-import DeleteModal from "../components/DeleteModal";
+import { useMemo, useState } from 'react';
+import { Search, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
+import { useSupabaseResource } from '../hooks/useSupabaseResource';
+import { useDebounce } from '../hooks/useDebounce';
+import { usePagination } from '../hooks/usePagination';
+import { deleteExamination, getExaminations } from '../services/examinationService';
+import { Pagination } from '../features/shared/components/Pagination';
+import DeleteModal from '../components/DeleteModal';
+import type { Examination } from '../types/examination';
 
-
-const ExaminationManagement: React.FC = () => {
-  const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState("");
-  const [examination, setExamination] = useState<any[]>([]);
-  const [statusTinggiFilter, setStatusTinggiFilter] = useState("");
-  const [statusBeratFilter,  setStatusBeratFilter]  = useState("");
-  const [genderFilter, setGenderFilter] = useState("");
-  const [selectedAnalisis, setSelectedAnalisis] = useState<any | null>(null);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-
-  const fetchExamination = async () => {
-    const { data, error } = await supabase
-      .from("Analisis")
-      .select("id, status_tinggi, status_berat, created_at, DataAnak(nama, gender, umur)")
-      .order("created_at", { ascending: false });
-
-    if (error) {
-      console.error("Error fetching examination:", error);
-    } else {
-      setExamination(data || []);
-    }
-  };
-
-  useEffect(() => {
-    fetchExamination();
-  }, []);
-
-  const filteredData = examination.filter((child) => {
-    const term = searchTerm.toLowerCase();
-
-    const matchSearch =
-      (child?.DataAnak?.nama || "").toLowerCase().includes(term) ||
-      (child?.gender || "").toLowerCase().includes(term) ||
-      (
-        (child.DataOrangTua?.nama_ayah || "") +
-        (child.DataOrangTua?.nama_ibu || "")
-      ).toLowerCase().includes(term);
-
-    const matchStatusTinggi =
-      !statusTinggiFilter || (child?.status_tinggi || "") === statusTinggiFilter;
-
-    const matchStatusBerat =
-      !statusBeratFilter || (child?.status_berat || "") === statusBeratFilter;
-
-    const matchGender =
-      !genderFilter || (child?.DataAnak?.gender || "") === genderFilter;
-
-    return matchSearch && matchStatusTinggi && matchStatusBerat && matchGender;
+const formatDate = (dateString: string) =>
+  new Date(dateString).toLocaleDateString('id-ID', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
   });
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("id-ID", {
-      day: "2-digit",
-      month: "short",
-      year: "numeric",
+const ExaminationManagement = () => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusTinggiFilter, setStatusTinggiFilter] = useState('');
+  const [statusBeratFilter, setStatusBeratFilter] = useState('');
+  const [genderFilter, setGenderFilter] = useState('');
+  const [selectedAnalisis, setSelectedAnalisis] = useState<Examination | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const debouncedSearch = useDebounce(searchTerm, 400);
+
+  const {
+    data: examinations,
+    isLoading,
+    error,
+    refresh,
+  } = useSupabaseResource<Examination[]>('examinations', getExaminations, { initialData: [] });
+
+  const filteredData = useMemo(() => {
+    const term = debouncedSearch.toLowerCase();
+
+    return examinations.filter((item) => {
+      const matchSearch =
+        !term ||
+        (item.DataAnak?.nama || '').toLowerCase().includes(term) ||
+        `${item.DataOrangTua?.nama_ayah || ''} ${item.DataOrangTua?.nama_ibu || ''}`
+          .toLowerCase()
+          .includes(term) ||
+        (item.DataAnak?.gender || '').toLowerCase().includes(term);
+
+      const matchStatusTinggi = !statusTinggiFilter || (item.status_tinggi || '') === statusTinggiFilter;
+      const matchStatusBerat = !statusBeratFilter || (item.status_berat || '') === statusBeratFilter;
+      const matchGender = !genderFilter || (item.DataAnak?.gender || '') === genderFilter;
+
+      return matchSearch && matchStatusTinggi && matchStatusBerat && matchGender;
     });
-  };
+  }, [examinations, debouncedSearch, statusTinggiFilter, statusBeratFilter, genderFilter]);
+
+  const {
+    items: paginatedExaminations,
+    page,
+    pageSize,
+    totalItems,
+    totalPages,
+    setPage,
+    setPageSize,
+  } = usePagination(filteredData, 10);
 
   const handleDelete = async () => {
-    if (!selectedAnalisis.id) return;
-
-    const { error, status } = await supabase
-      .from("Analisis")
-      .delete()
-      .eq("id", selectedAnalisis.id);
-
-    if (error) {
-      console.error("Delete error:", error);
-    } else {
-      console.log("Delete success, status:", status);
-      await fetchExamination(); // refresh UI
+    if (!selectedAnalisis) return;
+    try {
+      await deleteExamination(selectedAnalisis.id);
+      toast.success('Data pemeriksaan berhasil dihapus');
       setShowDeleteModal(false);
+      await refresh();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Gagal menghapus data pemeriksaan';
+      toast.error(message);
     }
   };
+
+  const isEmpty = !isLoading && paginatedExaminations.length === 0;
 
   return (
     <div className="space-y-6">
       <div className="px-6">
-        <div className="bg-white rounded-2xl shadow-md">
-          <div className="px-4 py-5 sm:p-6 w-full">
-            <h3 className="text-lg leading-6 font-bold text-gray-900 mb-6">
-              Pemeriksaan Terbaru
-            </h3>
+        <div className="rounded-2xl bg-white shadow-md">
+          <div className="w-full px-4 py-5 sm:p-6">
+            <h3 className="mb-6 text-lg font-bold leading-6 text-gray-900">Pemeriksaan Terbaru</h3>
 
-            {/* Filter & Search */}
-            <div className="flex pb-4 flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div className="flex flex-col gap-4 pb-4 sm:flex-row sm:items-center sm:justify-between">
               <div className="relative flex-1 max-w-md">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
                   <Search className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
                   type="text"
                   placeholder="Cari data anak..."
                   value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
-              <div className="flex gap-4">
+              <div className="flex flex-wrap gap-4">
                 <select
                   value={statusTinggiFilter}
-                  onChange={(e) => setStatusTinggiFilter(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium"
+                  onChange={(event) => setStatusTinggiFilter(event.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium"
                 >
                   <option value="">Status Tinggi</option>
                   <option value="Tinggi">Tinggi</option>
@@ -118,8 +112,8 @@ const ExaminationManagement: React.FC = () => {
                 </select>
                 <select
                   value={statusBeratFilter}
-                  onChange={(e) => setStatusBeratFilter(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium"
+                  onChange={(event) => setStatusBeratFilter(event.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium"
                 >
                   <option value="">Status Berat</option>
                   <option value="Gemuk">Gemuk</option>
@@ -129,8 +123,8 @@ const ExaminationManagement: React.FC = () => {
                 </select>
                 <select
                   value={genderFilter}
-                  onChange={(e) => setGenderFilter(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium"
+                  onChange={(event) => setGenderFilter(event.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium"
                 >
                   <option value="">Semua Gender</option>
                   <option value="boys">Laki-laki</option>
@@ -139,92 +133,108 @@ const ExaminationManagement: React.FC = () => {
               </div>
             </div>
 
-            {/* Tabel */}
-            <div className="overflow-x-auto w-full">
-              <table className="w-full min-w-full divide-y divide-gray-100">
+            <div className="w-full overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-100">
                 <thead className="bg-gray-50">
                   <tr>
-                    {["Nama", "Gender", "Usia", "Status Tinggi", "Status Berat", "Tanggal", "Aksi"].map((head) => (
-                      <th key={head} className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
+                    {['Nama', 'Gender', 'Usia', 'Status Tinggi', 'Status Berat', 'Tanggal', 'Aksi'].map((head) => (
+                      <th key={head} className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">
                         {head}
                       </th>
                     ))}
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-100">
-                  {filteredData.length > 0 ? (
-                    filteredData.map((item) => (
+                <tbody className="divide-y divide-gray-100 bg-white">
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
+                        Memuat data pemeriksaan...
+                      </td>
+                    </tr>
+                  ) : error ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-8 text-center text-sm text-red-500">
+                        Terjadi kesalahan saat memuat data.
+                      </td>
+                    </tr>
+                  ) : isEmpty ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
+                        Tidak ada data pemeriksaan yang cocok dengan filter.
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedExaminations.map((item) => (
                       <tr key={item.id} className="hover:bg-gray-100">
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900">{item.DataAnak?.nama || '-'}</td>
+                        <td className="px-6 py-4 text-sm">{item.DataAnak?.gender === 'boys' ? 'Laki-laki' : 'Perempuan'}</td>
+                        <td className="px-6 py-4 text-sm">{item.DataAnak?.umur ? `${item.DataAnak.umur} bulan` : '-'}</td>
                         <td className="px-6 py-4">
-                          <button
-                            onClick={() => navigate(`/childs/${item.id}`)}
-                            className="text-sm font-medium text-gray-900 hover:text-blue-600"
+                          <span
+                            className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${
+                              item.status_tinggi === 'Normal'
+                                ? 'bg-green-100 text-green-800'
+                                : item.status_tinggi === 'Stunting'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}
                           >
-                            {item.DataAnak?.nama || "-"}
-                          </button>
-                        </td>
-                        <td className="px-6 py-4 text-sm">{item.DataAnak?.gender === "boys" ? "Laki-laki" : "Perempuan"}</td>
-                        <td className="px-6 py-4 text-sm">{item.DataAnak?.umur ? `${item.DataAnak.umur} bulan` : "-"}</td>
-                        <td className="px-6 py-4">
-                          <span className={`px-3 py-1 text-xs font-bold rounded-full ${
-                            item.status_tinggi === "Normal"
-                              ? "bg-green-100 text-green-800"
-                              : item.status_tinggi === "Stunting"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
-                          }`}>
                             {item.status_tinggi}
                           </span>
                         </td>
                         <td className="px-6 py-4">
-                          <span className={`px-3 py-1 text-xs font-bold rounded-full ${
-                            item.status_berat === "Normal"
-                              ? "bg-green-100 text-green-800"
-                              : item.status_berat === "Stunting"
-                              ? "bg-yellow-100 text-yellow-800"
-                              : "bg-red-100 text-red-800"
-                          }`}>
+                          <span
+                            className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${
+                              item.status_berat === 'Normal'
+                                ? 'bg-green-100 text-green-800'
+                                : item.status_berat === 'Stunting'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}
+                          >
                             {item.status_berat}
                           </span>
                         </td>
                         <td className="px-6 py-4 text-sm">{formatDate(item.created_at)}</td>
-                        <td className="px-6 py-4 flex gap-2">
+                        <td className="px-6 py-4">
                           <button
                             onClick={() => {
                               setSelectedAnalisis(item);
                               setShowDeleteModal(true);
                             }}
-                            className="text-red-600 p-2 rounded hover:text-white hover:bg-red-400"
+                            className="rounded p-2 text-red-600 transition hover:bg-red-400 hover:text-white"
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>
                         </td>
                       </tr>
                     ))
-                  ) : (
-                    <tr>
-                      <td colSpan={8} className="text-center py-6 text-gray-500">
-                        Tidak ada data pemeriksaan
-                      </td>
-                    </tr>
                   )}
                 </tbody>
               </table>
             </div>
+
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
           </div>
         </div>
       </div>
 
-      {showDeleteModal && selectedAnalisis && (
-        <DeleteModal
-          isOpen={showDeleteModal}
-          onClose={() => setShowDeleteModal(false)}
-          onConfirm={handleDelete}
-          title="Hapus Data Pemeriksaan"
-          message="Anda akan menghapus data ini secara permanen.
-Semua informasi terkait tidak dapat dikembalikan. Lanjutkan?"
-        />
-      )}
+      <DeleteModal
+        isOpen={showDeleteModal && Boolean(selectedAnalisis)}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDelete}
+        title="Hapus Pemeriksaan"
+        message={
+          selectedAnalisis ? `Apakah Anda yakin ingin menghapus pemeriksaan ${selectedAnalisis.DataAnak?.nama ?? 'ini'}?` : ''
+        }
+      />
     </div>
   );
 };
