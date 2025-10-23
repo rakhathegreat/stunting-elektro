@@ -1,20 +1,23 @@
-import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from 'react';
 import {
-  Search,
+  Edit,
   Plus,
+  Search,
+  Trash2,
+  TrendingUp,
   User,
   Users,
-  TrendingUp,
-  Edit,
-  Trash2,
-} from "lucide-react";
-import { supabase } from "../supabaseClient";
-import type { Child } from "../types/children";
-import type { Parent } from "../types/parent";
-import EditModal from "../components/Dashboard/EditModal";
-import DeleteModal from "../components/DeleteModal";
-import AddModal from "../components/baby/AddModal";
+} from 'lucide-react';
+import { toast } from 'sonner';
+import type { Child } from '../types/children';
+import { useSupabaseResource } from '../hooks/useSupabaseResource';
+import { useDebounce } from '../hooks/useDebounce';
+import { usePagination } from '../hooks/usePagination';
+import { getChildren, deleteChild } from '../services/childService';
+import EditModal from '../components/Dashboard/EditModal';
+import DeleteModal from '../components/DeleteModal';
+import AddModal from '../components/baby/AddModal';
+import { Pagination } from '../features/shared/components/Pagination';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -27,216 +30,181 @@ interface Snapshot {
 
 const loadHistory = (): Snapshot[] => {
   try {
-    return JSON.parse(localStorage.getItem("baby_history") || "[]");
+    return JSON.parse(localStorage.getItem('baby_history') || '[]');
   } catch {
     return [];
   }
 };
 
-const saveHistory = (list: Snapshot[]) =>
-  localStorage.setItem("baby_history", JSON.stringify(list));
+const saveHistory = (list: Snapshot[]) => {
+  localStorage.setItem('baby_history', JSON.stringify(list));
+};
 
-const BabyManagement: React.FC = () => {
-  const formatNumber = (n: number) => new Intl.NumberFormat('id-ID').format(n);
-  const navigate = useNavigate();
-  const [searchTerm, setSearchTerm] = useState("");
+const BabyManagement = () => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const debouncedSearch = useDebounce(searchTerm, 400);
+  const [statusTinggiFilter, setStatusTinggiFilter] = useState('');
+  const [statusBeratFilter, setStatusBeratFilter] = useState('');
+  const [genderFilter, setGenderFilter] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [selectedChild, setSelectedChild] = useState<Child | null>(null);
-  const [, setParents] = useState<Parent[]>([]);
-  const [children, setChildren] = useState<Child[]>([]);
-  const [statusTinggiFilter, setStatusTinggiFilter] = useState("");
-  const [statusBeratFilter,  setStatusBeratFilter]  = useState("");
-  const [genderFilter, setGenderFilter] = useState("");
   const [showEditModal, setShowEditModal] = useState(false);
+  const [selectedChild, setSelectedChild] = useState<Child | null>(null);
+
+  const {
+    data: children,
+    isLoading,
+    error,
+    refresh,
+  } = useSupabaseResource<Child[]>('children-management', getChildren, { initialData: [] });
+
   const totalChildren = children.length;
-  const boys   = children.filter(c => c.gender === "boys").length;
-  const girls  = children.filter(c => c.gender === "girls").length;
+  const boys = children.filter((child) => child.gender === 'boys').length;
+  const girls = children.filter((child) => child.gender === 'girls').length;
   const avgAge =
     totalChildren === 0
       ? 0
-      : children.reduce((sum, c) => sum + (c.umur || 0), 0) / totalChildren;
+      : children.reduce((sum, child) => sum + (child.umur || 0), 0) / totalChildren;
 
   const [trend, setTrend] = useState({ total: 0, boys: 0, girls: 0 });
 
   useEffect(() => {
     const history = loadHistory();
-    const todayStr = today();
-    const yesterdayStr = new Date(Date.now() - 86400000)
-      .toISOString()
-      .slice(0, 10);
-
-    // simpan/ update hari ini
-    const todayIdx = history.findIndex(h => h.date === todayStr);
-    const todayData = { date: todayStr, total: totalChildren, boys, girls };
-    if (todayIdx === -1) history.push(todayData);
-    else history[todayIdx] = todayData;
+    const todayKey = today();
+    const todayData = { date: todayKey, total: totalChildren, boys, girls };
+    const index = history.findIndex((entry) => entry.date === todayKey);
+    if (index === -1) {
+      history.push(todayData);
+    } else {
+      history[index] = todayData;
+    }
     saveHistory(history);
 
-    // ambil snapshot kemarin
-    const y = history.find(h => h.date === yesterdayStr) || {
+    const yesterdayKey = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+    const yesterday = history.find((entry) => entry.date === yesterdayKey) ?? {
       total: 0,
       boys: 0,
       girls: 0,
     };
+
     setTrend({
-      total: totalChildren - y.total,
-      boys: boys - y.boys,
-      girls: girls - y.girls,
+      total: totalChildren - yesterday.total,
+      boys: boys - yesterday.boys,
+      girls: girls - yesterday.girls,
     });
   }, [totalChildren, boys, girls]);
 
-  // statsData otomatis ter-update
-  const statsData = [
-    {
-      name: "Total Anak",
-      stat: formatNumber(totalChildren),
-      change: `${trend.total >= 0 ? "+" : ""}${trend.total}`,
-      color: "blue",
-      icon: Users,
-    },
-    {
-      name: "Jumlah Laki-laki",
-      stat: formatNumber(boys),
-      change: `${trend.boys >= 0 ? "+" : ""}${trend.boys}`,
-      color: "green",
-      icon: Users,
-    },
-    {
-      name: "Jumlah Perempuan",
-      stat: formatNumber(girls),
-      change: `${trend.girls >= 0 ? "+" : ""}${trend.girls}`,
-      color: "yellow",
-      icon: Users,
-    },
-    {
-      name: "Rata-Rata Usia",
-      stat: `${avgAge.toFixed(1)} bln`,
-      change: "+0",
-      color: "indigo",
-      icon: Users,
-    },
-  ];
+  const statsData = useMemo(
+    () => [
+      {
+        name: 'Total Anak',
+        stat: new Intl.NumberFormat('id-ID').format(totalChildren),
+        change: `${trend.total >= 0 ? '+' : ''}${trend.total}`,
+        color: 'blue',
+        icon: Users,
+      },
+      {
+        name: 'Jumlah Laki-laki',
+        stat: new Intl.NumberFormat('id-ID').format(boys),
+        change: `${trend.boys >= 0 ? '+' : ''}${trend.boys}`,
+        color: 'green',
+        icon: Users,
+      },
+      {
+        name: 'Jumlah Perempuan',
+        stat: new Intl.NumberFormat('id-ID').format(girls),
+        change: `${trend.girls >= 0 ? '+' : ''}${trend.girls}`,
+        color: 'yellow',
+        icon: Users,
+      },
+      {
+        name: 'Rata-Rata Usia',
+        stat: `${avgAge.toFixed(1)} bln`,
+        change: '+0',
+        color: 'indigo',
+        icon: User,
+      },
+    ],
+    [totalChildren, boys, girls, trend, avgAge],
+  );
 
-  // 🔹 Ambil data dari Supabase
-  const fetchParents = async () => {
-    const { data, error } = await supabase.from("DataOrangTua").select("*");
-    if (error) {
-      console.error("Error fetching parents:", error);
-    } else {
-      setParents(data || []);
-    }
-  };
+  const filteredChildren = useMemo(() => {
+    const term = debouncedSearch.toLowerCase();
+    return children.filter((child) => {
+      const matchSearch =
+        !term ||
+        (child.nama || '').toLowerCase().includes(term) ||
+        (child.gender || '').toLowerCase().includes(term) ||
+        `${child.DataOrangTua?.nama_ayah || ''} ${child.DataOrangTua?.nama_ibu || ''}`
+          .toLowerCase()
+          .includes(term);
 
- useEffect(() => {
-    fetchParents();
-    fetchChildren();
-  }, []);
+      const matchStatusTinggi = !statusTinggiFilter || (child.status_tinggi || '') === statusTinggiFilter;
+      const matchStatusBerat = !statusBeratFilter || (child.status_berat || '') === statusBeratFilter;
+      const matchGender = !genderFilter || (child.gender || '') === genderFilter;
 
+      return matchSearch && matchStatusTinggi && matchStatusBerat && matchGender;
+    });
+  }, [children, debouncedSearch, statusTinggiFilter, statusBeratFilter, genderFilter]);
 
-  const fetchChildren = async () => {
-    const { data, error } = await supabase.from("DataAnak").select(`
-        *,
-        DataOrangTua (
-          nama_ayah,
-          nama_ibu
-        )
-      `)
-      .neq("nama", null)
-      .order("created_at", { ascending: false });
+  const {
+    items: paginatedChildren,
+    page,
+    pageSize,
+    totalItems,
+    totalPages,
+    setPage,
+    setPageSize,
+  } = usePagination(filteredChildren, 10);
 
-    if (error) {
-      console.error("Error fetching children:", error);
-    } else {
-      setChildren(data || []);
-    }
-  };
-
-
-  // 🔹 Filter pencarian
-  const filteredChildren = children.filter((child) => {
-    const term = searchTerm.toLowerCase();
-
-    const matchSearch =
-      (child?.nama || "").toLowerCase().includes(term) ||
-      (child?.gender || "").toLowerCase().includes(term) ||
-      (
-        (child.DataOrangTua?.nama_ayah || "") +
-        (child.DataOrangTua?.nama_ibu || "")
-      ).toLowerCase().includes(term);
-
-    const matchStatusTinggi =
-      !statusTinggiFilter || (child?.status_tinggi || "") === statusTinggiFilter;
-
-    const matchStatusBerat =
-      !statusBeratFilter || (child?.status_berat || "") === statusBeratFilter;
-
-    const matchGender =
-      !genderFilter || (child?.gender || "") === genderFilter;
-
-    return matchSearch && matchStatusTinggi && matchStatusBerat && matchGender;
-  });
-
-  // Buka modal hapus
   const openDeleteModal = (child: Child) => {
     setSelectedChild(child);
     setShowDeleteModal(true);
   };
 
-  /* ------------- HANDLER ------------- */
-
-  // Konfirmasi hapus
   const handleDelete = async () => {
     if (!selectedChild) return;
-    console.log("Deleting child id:", selectedChild.id);
-
-    const { error, status } = await supabase
-      .from("DataAnak")
-      .delete()
-      .eq("id", selectedChild.id);
-
-    if (error) {
-      console.error("Delete error:", error);
-    } else {
-      console.log("Delete success, status:", status); // 204
-      await fetchChildren(); // refresh UI
+    try {
+      await deleteChild(String(selectedChild.id));
+      toast.success('Data anak berhasil dihapus');
       setShowDeleteModal(false);
+      await refresh();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Gagal menghapus data anak';
+      toast.error(message);
     }
   };
 
-  const handleEditChild = (child: Child) => {
-    setSelectedChild(child);
-    setShowEditModal(true);
+  const handleEditClose = async () => {
+    setShowEditModal(false);
+    await refresh();
   };
 
-  const handleUpdateChild = async () => {
-    await fetchChildren(); // refresh data dari Supabase
+  const handleAddClose = async () => {
+    setShowAddModal(false);
+    await refresh();
   };
 
-  const openCreateBabyModal = async (open: boolean) => {
-    setShowAddModal(open);
-  };
+  const isEmpty = !isLoading && paginatedChildren.length === 0;
 
   return (
     <div className="space-y-6">
-      <div className="px-6 grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-5 px-6 sm:grid-cols-2 lg:grid-cols-4">
         {statsData.map((item) => (
           <div
             key={item.name}
-            className="bg-white relative glass py-6 px-6 shadow-modern rounded-2xl overflow-hidden hover:shadow-modern-lg transition-all hover:scale-[1.02] shadow-md"
+            className="relative overflow-hidden rounded-2xl bg-white px-6 pb-6 pt-6 shadow-md transition-all hover:scale-[1.02] hover:shadow-modern-lg"
           >
             <dt>
-              <div className={`absolute bg-gradient-to-br from-${item.color}-500 to-${item.color}-600 rounded-xl p-3 shadow-modern`}>
+              <div className={`absolute rounded-xl bg-gradient-to-br from-${item.color}-500 to-${item.color}-700 p-3 shadow-modern`}>
                 <item.icon className="h-6 w-6 text-white" aria-hidden="true" />
               </div>
-              <p className="ml-16 text-sm font-semibold text-gray-500 truncate">
-                {item.name}
-              </p>
+              <p className="ml-16 truncate text-sm font-semibold text-gray-500">{item.name}</p>
             </dt>
-            <dd className="ml-16 pb-2 flex items-baseline">
+            <dd className="ml-16 flex items-baseline pb-2">
               <p className="text-3xl font-bold text-gray-900">{item.stat}</p>
-              <p className={`ml-3 flex items-baseline text-sm font-semibold text-green-600`}>
-                <TrendingUp className="self-center flex-shrink-0 h-4 w-4 text-green-500 mr-1" />
+              <p className={`ml-3 flex items-baseline text-sm font-semibold ${Number(item.change) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                <TrendingUp className="mr-1 h-4 w-4 flex-shrink-0" aria-hidden="true" />
                 {item.change}
               </p>
             </dd>
@@ -244,250 +212,159 @@ const BabyManagement: React.FC = () => {
         ))}
       </div>
 
-      <div className="px-6">
-        <div className="bg-white rounded-2xl shadow-md">
-          <div className="px-4 py-5 sm:p-6 w-full">
-            <h3 className="text-lg leading-6 font-bold text-gray-900 mb-6">
-              Pemeriksaan Terbaru
-            </h3>
+      <div className="w-full px-6">
+        <div className="rounded-2xl bg-white shadow-md">
+          <div className="px-4 py-5 sm:p-6">
+            <h3 className="mb-6 text-lg font-bold leading-6 text-gray-900">Data Anak</h3>
 
-            <div className="flex pb-4 flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-              <div className="relative flex-1 max-w-md">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                  <Search className="h-5 w-5 text-gray-400" />
+            <div className="flex flex-col gap-4 pb-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex w-full flex-col gap-3 sm:flex-row">
+                <div className="relative flex-1">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
+                    <Search className="h-5 w-5 text-gray-400" />
+                  </div>
+                  <input
+                    type="text"
+                    placeholder="Cari anak atau orang tua..."
+                    value={searchTerm}
+                    onChange={(event) => setSearchTerm(event.target.value)}
+                    className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
                 </div>
-                <input
-                  type="text"
-                  placeholder="Cari data anak..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div className="flex gap-4">
                 <select
                   value={statusTinggiFilter}
-                  onChange={(e) => setStatusTinggiFilter(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium"
+                  onChange={(event) => setStatusTinggiFilter(event.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 >
                   <option value="">Status Tinggi</option>
-                  <option value="Tinggi">Tinggi</option>
-                  <option value="Normal">Normal</option>
-                  <option value="Pendek">Pendek</option>
-                  <option value="Sangat Pendek">Sangat Pendek</option>
+                  <option value="tinggi">Tinggi</option>
+                  <option value="normal">Normal</option>
+                  <option value="pendek">Pendek</option>
+                  <option value="sangat pendek">Sangat Pendek</option>
                 </select>
                 <select
                   value={statusBeratFilter}
-                  onChange={(e) => setStatusBeratFilter(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium"
+                  onChange={(event) => setStatusBeratFilter(event.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 >
                   <option value="">Status Berat</option>
-                  <option value="Gemuk">Gemuk</option>
-                  <option value="Normal">Normal</option>
-                  <option value="Kurus">Kurus</option>
-                  <option value="Sangat Kurus">Sangat Kurus</option>
+                  <option value="gemuk">Gemuk</option>
+                  <option value="normal">Normal</option>
+                  <option value="kurus">Kurus</option>
+                  <option value="sangat kurus">Sangat Kurus</option>
                 </select>
                 <select
                   value={genderFilter}
-                  onChange={(e) => setGenderFilter(e.target.value)}
-                  className="border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium"
+                  onChange={(event) => setGenderFilter(event.target.value)}
+                  className="rounded-lg border border-gray-300 px-3 py-2 text-sm"
                 >
-                  <option value="">Semua Gender</option>
+                  <option value="">Jenis Kelamin</option>
                   <option value="boys">Laki-laki</option>
                   <option value="girls">Perempuan</option>
                 </select>
-                <button
-                  onClick={() => openCreateBabyModal(true)}
-                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Tambah Data Anak
-                </button>
               </div>
+
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="inline-flex items-center rounded-lg border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Tambah Anak
+              </button>
             </div>
 
-            <div className="overflow-x-auto w-full">
-              <table className="w-full min-w-full divide-y divide-gray-100">
+            <div className="w-full overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-100">
                 <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Nama
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Jenis Kelamin
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Orang Tua
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Usia
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Status Tinggi
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Status Berat
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Pengukuran Terakhir
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Terdaftar Sejak
-                    </th>
-                    <th className="px-6 py-4 text-left text-xs font-bold text-gray-600 uppercase tracking-wider">
-                      Aksi
-                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Nama</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Orang Tua</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Jenis Kelamin</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Umur</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Status Tinggi</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Status Berat</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Aksi</th>
                   </tr>
                 </thead>
-                <tbody className="bg-white/50 divide-y divide-gray-100">
-                  {filteredChildren.map((child) => (
-                    <tr
-                      onClick={() => navigate(`/babies/${child.id}`)}
-                      key={child.id}
-                      className="hover:cursor-pointer hover:bg-gray-100"
-                    >
-                      <td className="px-6 py-4">
-                        <button
-                          onClick={() => navigate(`/childs/${child.id}`)}
-                          className="text-sm font-medium text-gray-900 hover:text-blue-600 transition-colors text-left"
-                        >
-                          {child.nama}
-                        </button>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-muted-foreground flex items-center mt-1">
-                          {child.gender === 'boys' ? 'Laki-laki' : 'Perempuan'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="space-y-1">
-                          <div className="flex items-center text-sm font-medium">
-                            <User className="h-3 w-3 mr-2" />
-                            {child.DataOrangTua?.nama_ayah ||
-                              child?.DataOrangTua?.nama_ibu ||
-                              "-"}
-                          </div>
-                          <div className="flex items-center text-sm text-muted-foreground">
-                            <User className="h-3 w-3 mr-2" />
-                            {child.DataOrangTua?.nama_ibu || "-"}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div>
-                          <div className="text-sm font-medium">
-                            {child.umur} bulan
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-3 py-1 text-xs font-bold rounded-full ${
-                            child.status_tinggi === "Normal"
-                              ? "bg-gradient-to-r from-green-100 to-emerald-100 text-green-800"
-                              : child.status_tinggi === "Stunting"
-                              ? "bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800"
-                              : "bg-gradient-to-r from-red-100 to-rose-100 text-red-800"
-                          }`}
-                        >
-                          {child.status_tinggi}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span
-                          className={`inline-flex px-3 py-1 text-xs font-bold rounded-full ${
-                            child.status_berat === "Normal"
-                              ? "bg-gradient-to-r from-green-100 to-emerald-100 text-green-800"
-                              : child.status_berat === "Stunting"
-                              ? "bg-gradient-to-r from-yellow-100 to-amber-100 text-yellow-800"
-                              : "bg-gradient-to-r from-red-100 to-rose-100 text-red-800"
-                          }`}
-                        >
-                          {child.status_berat}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium">
-                          {child.updated_at}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="text-sm font-medium text-muted-foreground">
-                          {child.created_at.slice(0, 10)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center justify-start gap-2">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation(); // Mencegah navigate
-                              handleEditChild(child);
-                            }}
-                            className="text-gray-600 p-2 rounded hover:text-white hover:bg-blue-400"
-                          >
-                            <Edit className="h-4 w-4" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openDeleteModal(child);
-                            }}
-                            className="text-red-600 p-2 rounded hover:text-white hover:bg-red-400"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        </div>
+                <tbody className="divide-y divide-gray-100 bg-white/50">
+                  {isLoading ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
+                        Memuat data anak...
                       </td>
                     </tr>
-                  ))}
+                  ) : error ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-8 text-center text-sm text-red-500">
+                        Terjadi kesalahan saat memuat data.
+                      </td>
+                    </tr>
+                  ) : isEmpty ? (
+                    <tr>
+                      <td colSpan={7} className="px-6 py-8 text-center text-sm text-gray-500">
+                        Tidak ada data anak yang cocok dengan filter.
+                      </td>
+                    </tr>
+                  ) : (
+                    paginatedChildren.map((child) => (
+                      <tr key={child.id} className="transition-colors hover:bg-gray-100">
+                        <td className="px-6 py-4 text-sm font-medium text-gray-900">{child.nama}</td>
+                        <td className="px-6 py-4 text-sm text-gray-700">
+                          {child.DataOrangTua?.nama_ayah} & {child.DataOrangTua?.nama_ibu}
+                        </td>
+                        <td className="px-6 py-4 text-sm capitalize text-gray-700">{child.gender}</td>
+                        <td className="px-6 py-4 text-sm text-gray-700">{child.umur} bulan</td>
+                        <td className="px-6 py-4 text-sm text-gray-700">{child.status_tinggi}</td>
+                        <td className="px-6 py-4 text-sm text-gray-700">{child.status_berat}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <button
+                              className="rounded p-2 text-gray-600 transition hover:bg-blue-400 hover:text-white"
+                              onClick={() => {
+                                setSelectedChild(child);
+                                setShowEditModal(true);
+                              }}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </button>
+                            <button
+                              className="rounded p-2 text-red-600 transition hover:bg-red-400 hover:text-white"
+                              onClick={() => openDeleteModal(child)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
+
+            <Pagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              pageSize={pageSize}
+              onPageChange={setPage}
+              onPageSizeChange={setPageSize}
+            />
           </div>
         </div>
       </div>
 
-      {filteredChildren.length === 0 && (
-        <div className="text-center py-12 text-gray-500">
-          <p className="text-lg font-medium">Tidak ada data anak</p>
-          <p className="mt-2">
-            Coba ubah kata kunci pencarian
-          </p>
-        </div>
-      )}
-
-      {showDeleteModal && (
-        <DeleteModal
-          isOpen={showDeleteModal}
-          onClose={() => setShowDeleteModal(false)}
-          onConfirm={handleDelete}
-          title="Hapus Data Pemeriksaan"
-          message="Anda akan menghapus data ini secara permanen.
-Semua informasi terkait tidak dapat dikembalikan. Lanjutkan?"
-        />
-      )}
-
-      {showAddModal && (
-        <AddModal 
-          onClose={() => {
-            setShowAddModal(false);
-          }}
-        />
-      )}
-
-      {showEditModal && selectedChild && (
-        <EditModal
-          child={selectedChild}
-          onClose={() => {
-            setShowEditModal(false);
-            setSelectedChild(null);
-          }}
-          onUpdate={handleUpdateChild}
-        />
-      )}
-
-      
+      {showAddModal ? <AddModal onClose={handleAddClose} /> : null}
+      {showEditModal && selectedChild ? (
+        <EditModal child={selectedChild} onClose={handleEditClose} onUpdate={refresh} />
+      ) : null}
+      <DeleteModal
+        isOpen={showDeleteModal && Boolean(selectedChild)}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={handleDelete}
+        title="Hapus Data Anak"
+        message={selectedChild ? `Apakah Anda yakin ingin menghapus data ${selectedChild.nama}?` : ''}
+      />
     </div>
   );
 };

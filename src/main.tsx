@@ -1,14 +1,12 @@
-'use client'
+'use client';
 
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './main.css'
-import App from './App.tsx'
-import { Toaster } from "sonner"
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import './main.css';
+import App from './App';
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-      <App />
-    <Toaster position="top-center" richColors />
+    <App />
   </StrictMode>,
-)
+);

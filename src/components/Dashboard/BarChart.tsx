@@ -1,160 +1,109 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import { useMemo } from 'react';
 import {
-    BarChart,
-    Bar,
-    XAxis,
-    YAxis,
-    CartesianGrid,
-    Tooltip,
-    Legend,
-    ResponsiveContainer,
+  Bar,
+  BarChart as RechartsBarChart,
+  CartesianGrid,
+  Legend,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
 } from 'recharts';
-import { supabase } from '../../supabaseClient';
-
-interface Analisis {
-    status_tinggi: string;
-    status_berat: string;
-    bulan: number;
-}
+import { useSupabaseResource } from '../../hooks/useSupabaseResource';
+import { getMonthlyAnalysis, type MonthlyAnalysisRow } from '../../services/dashboardService';
 
 interface ChartData {
-    bulan: number;
-    
-    //status_berat
-    gemuk: number;
-    normalBerat: number;
-    kurus: number;
-    sangatKurus: number;
-
-    //status_tinggi
-    tinggi: number;
-    normalTinggi: number;
-    pendek: number;
-    sangatPendek: number;
+  bulan: number;
+  gemuk: number;
+  normalBerat: number;
+  kurus: number;
+  sangatKurus: number;
+  tinggi: number;
+  normalTinggi: number;
+  pendek: number;
+  sangatPendek: number;
 }
 
-const StackedBarChartComponent: React.FC = () => {
-    const [chartData, setChartData] = useState<ChartData[]>([]);
-    const [loading, setLoading] = useState<boolean>(true);
-    const [error, setError] = useState<string | null>(null);
+const LoadingState = () => <p className="px-4 py-6 text-sm text-gray-500">Memuat data grafik...</p>;
+const ErrorState = ({ message }: { message: string }) => (
+  <p className="px-4 py-6 text-sm text-red-600">Terjadi kesalahan: {message}</p>
+);
 
-    const fetchGrowthData = useCallback(async () => {
-        setLoading(true);
-        setError(null);
-        try {
-            const { data, error } = await supabase
-                .from('Analisis')
-                .select('status_tinggi, status_berat, bulan')
-                .order('bulan', { ascending: true });
+const StackedBarChartComponent = () => {
+  const {
+    data,
+    isLoading,
+    error,
+  } = useSupabaseResource<MonthlyAnalysisRow[]>('dashboard-monthly-analysis', getMonthlyAnalysis, {
+    initialData: [],
+  });
 
-            if (error) {
-                setError(error.message);
-                console.error('Error fetching growth data:', error);
-            } else if (data) {
-                // Group data by bulan
-                const groupedByBulan: Record<number, ChartData> = {};
+  const chartData = useMemo<ChartData[]>(() => {
+    const grouped = data.reduce<Record<number, ChartData>>((acc, item) => {
+      const month = item.bulan;
+      if (!acc[month]) {
+        acc[month] = {
+          bulan: month,
+          gemuk: 0,
+          normalBerat: 0,
+          kurus: 0,
+          sangatKurus: 0,
+          tinggi: 0,
+          normalTinggi: 0,
+          pendek: 0,
+          sangatPendek: 0,
+        };
+      }
 
-                data.forEach((item: Analisis) => {
-                    const bulan = item.bulan;
-                    if (!groupedByBulan[bulan]) {
-                        groupedByBulan[bulan] = {
-                            bulan: bulan,
-                            gemuk: 0,
-                            normalBerat: 0,
-                            kurus: 0,
-                            sangatKurus: 0,
-                            tinggi: 0,
-                            normalTinggi: 0,
-                            pendek: 0,
-                            sangatPendek: 0,
-                        };
-                    }
+      const lowerWeight = item.status_berat.toLowerCase();
+      if (lowerWeight === 'gemuk') acc[month].gemuk += 1;
+      else if (lowerWeight === 'normal') acc[month].normalBerat += 1;
+      else if (lowerWeight === 'kurus') acc[month].kurus += 1;
+      else if (lowerWeight === 'sangat kurus') acc[month].sangatKurus += 1;
 
-                    // Hitung berdasarkan status berat
-                    switch (item.status_berat.toLowerCase()) {
-                        case 'gemuk':
-                            groupedByBulan[bulan].gemuk++;
-                            break;
-                        case 'normal':
-                            groupedByBulan[bulan].normalBerat++;
-                            break;
-                        case 'kurus':
-                            groupedByBulan[bulan].kurus++;
-                            break;
-                        case 'sangat kurus':
-                            groupedByBulan[bulan].sangatKurus++;
-                            break;
-                    }
+      const lowerHeight = item.status_tinggi.toLowerCase();
+      if (lowerHeight === 'tinggi') acc[month].tinggi += 1;
+      else if (lowerHeight === 'normal') acc[month].normalTinggi += 1;
+      else if (lowerHeight === 'pendek') acc[month].pendek += 1;
+      else if (lowerHeight === 'sangat pendek') acc[month].sangatPendek += 1;
 
-                    // Hitung berdasarkan status tinggi
-                    switch (item.status_tinggi.toLowerCase()) {
-                        case 'tinggi':
-                            groupedByBulan[bulan].tinggi++;
-                            break;
-                        case 'normal':
-                            groupedByBulan[bulan].normalTinggi++;
-                            break;
-                        case 'pendek':
-                            groupedByBulan[bulan].pendek++;
-                            break;
-                        case 'sangat pendek':
-                            groupedByBulan[bulan].sangatPendek++;
-                            break;
-                    }
-                });
+      return acc;
+    }, {});
 
-                // Convert ke array dan sort by bulan
-                const chartDataArray: ChartData[] = Object.values(groupedByBulan)
-                    .sort((a, b) => a.bulan - b.bulan);
+    return Object.values(grouped).sort((a, b) => a.bulan - b.bulan);
+  }, [data]);
 
-                setChartData(chartDataArray);
-            }
-        } catch (err) {
-            console.error('Unexpected error:', err);
-            setError('Terjadi kesalahan saat memuat data.');
-        } finally {
-            setLoading(false);
-        }
-    }, []);
+  if (isLoading) {
+    return <LoadingState />;
+  }
 
-    useEffect(() => {
-        fetchGrowthData();
-    }, [fetchGrowthData]);
+  if (error) {
+    return <ErrorState message={error} />;
+  }
 
-    if (loading) return <p>Memuat data grafik...</p>;
-    if (error) return <p>Error: {error}</p>;
+  return (
+    <div className="h-[400px] w-full">
+      <ResponsiveContainer width="100%" height="100%">
+        <RechartsBarChart data={chartData}>
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="bulan" label={{ value: 'Bulan', position: 'insideBottom', offset: -5 }} />
+          <YAxis label={{ value: 'Jumlah Anak', angle: -90, position: 'insideLeft' }} />
+          <Tooltip />
+          <Legend wrapperStyle={{ paddingTop: '20px' }} />
 
-    return (
-        <div style={{ width: '100%', height: '400px' }}>
-            <ResponsiveContainer width="100%" height="100%">
-            <BarChart
-                data={chartData}
-            >
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis
-                dataKey="bulan"
-                label={{ value: 'Bulan', position: 'insideBottom', offset: -5 }}
-                />
-                <YAxis label={{ value: 'Jumlah Anak', angle: -90, position: 'insideLeft' }} />
-                <Tooltip />
-                <Legend wrapperStyle={{ paddingTop: "20px" }} />
+          <Bar dataKey="gemuk" stackId="berat" fill="#E53935" name="Gemuk" />
+          <Bar dataKey="normalBerat" stackId="berat" fill="#43A047" name="Normal (Berat)" />
+          <Bar dataKey="kurus" stackId="berat" fill="#FB8C00" name="Kurus" />
+          <Bar dataKey="sangatKurus" stackId="berat" fill="#6D4C41" name="Sangat Kurus" />
 
-                {/* Status Berat */}
-                <Bar dataKey="gemuk" stackId="berat" fill="#E53935" name="Gemuk" /> {/* Merah */}
-                <Bar dataKey="normalBerat" stackId="berat" fill="#43A047" name="Normal (Berat)" /> {/* Hijau */}
-                <Bar dataKey="kurus" stackId="berat" fill="#FB8C00" name="Kurus" /> {/* Oranye */}
-                <Bar dataKey="sangatKurus" stackId="berat" fill="#6D4C41" name="Sangat Kurus" /> {/* Cokelat */}
-
-                {/* Status Tinggi */}
-                <Bar dataKey="tinggi" stackId="tinggi" fill="#1E88E5" name="Tinggi" /> {/* Biru */}
-                <Bar dataKey="normalTinggi" stackId="tinggi" fill="#7CB342" name="Normal (Tinggi)" /> {/* Hijau Muda */}
-                <Bar dataKey="pendek" stackId="tinggi" fill="#FDD835" name="Pendek" /> {/* Kuning */}
-                <Bar dataKey="sangatPendek" stackId="tinggi" fill="#546E7A" name="Sangat Pendek" /> {/* Abu Kebiruan */}
-            </BarChart>
-            </ResponsiveContainer>
-        </div>
-    );
-
+          <Bar dataKey="tinggi" stackId="tinggi" fill="#1E88E5" name="Tinggi" />
+          <Bar dataKey="normalTinggi" stackId="tinggi" fill="#7CB342" name="Normal (Tinggi)" />
+          <Bar dataKey="pendek" stackId="tinggi" fill="#FDD835" name="Pendek" />
+          <Bar dataKey="sangatPendek" stackId="tinggi" fill="#546E7A" name="Sangat Pendek" />
+        </RechartsBarChart>
+      </ResponsiveContainer>
+    </div>
+  );
 };
 
 export default StackedBarChartComponent;

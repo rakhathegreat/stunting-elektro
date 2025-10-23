@@ -3,8 +3,8 @@ export interface Parent {
     created_at: string;
     nama_ayah: string;
     nama_ibu: string;
-    tanggal_lahir_ayah: Date;
-    tanggal_lahir_ibu: Date;
+    tanggal_lahir_ayah: string;
+    tanggal_lahir_ibu: string;
     no_hp: string;
     email: string;
     alamat: string;

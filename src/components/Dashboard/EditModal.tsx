@@ -1,6 +1,6 @@
 import Input from "../Input";
 import { useState, useEffect } from "react";
-import { supabase } from "../../supabaseClient";
+import { updateChild } from '../../services/childService';
 
 interface EditModalProps {
   child: any;
@@ -39,15 +39,10 @@ const EditModal: React.FC<EditModalProps> = ({ child, onClose, onUpdate }) => {
     setLoading(true);
 
     try {
-      const { error } = await supabase
-        .from('DataAnak')
-        .update({
-          ...formData,
-          updated_at: new Date().toISOString()
-        })
-        .eq('id', child.id);
-
-      if (error) throw error;
+      await updateChild(child.id, {
+        ...formData,
+        updated_at: new Date().toISOString(),
+      });
       
       onUpdate();
       onClose();
