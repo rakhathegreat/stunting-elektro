@@ -8,7 +8,7 @@ export interface Parent {
     no_hp: string;
     email: string;
     alamat: string;
-    status_aktif: string;
+    status_aktif: boolean;
     kunjungan_terakhir: string;
     pekerjaan: string;
     pendidikan: string;

@@ -38,7 +38,7 @@ const Layout = ({ children }: Props) => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <header className="sticky top-0 z-20 border-b border-gray-200 bg-white shadow-sm">
+      <header className="fixed w-full top-0 z-30 border-b border-gray-200 bg-white shadow-sm">
         <div className="mx-auto px-4 sm:px-6">
           <div className="flex h-16 justify-between">
             <div className="flex items-center">
@@ -72,7 +72,7 @@ const Layout = ({ children }: Props) => {
       </header>
 
       <div className="flex">
-        <nav className="group hidden transition-all duration-300 md:fixed md:inset-y-0 md:flex md:w-20 md:flex-col md:pt-16 hover:md:w-64">
+        <nav className="group z-20 hidden transition-all duration-300 md:fixed md:inset-y-0 md:flex md:w-20 md:flex-col md:pt-16 hover:md:w-64">
           <div className="flex-1 overflow-y-auto border-r border-gray-200 bg-white pb-4 pt-5">
             <div className="px-3">
               <ul className="space-y-1">
@@ -84,7 +84,7 @@ const Layout = ({ children }: Props) => {
                         `group flex items-center rounded-md px-4 py-4 text-sm font-medium transition-colors ${
                           isActive
                             ? 'bg-blue-100 text-blue-700'
-                            : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                            : 'text-gray-600 hover:bg-gray-200 hover:text-gray-700'
                         }`
                       }
                     >
@@ -134,7 +134,7 @@ const Layout = ({ children }: Props) => {
 
         <main className="flex-1 transition-all duration-300 md:pl-20 group-hover:md:pl-64">
           <div className="py-6">
-            <div className="mx-auto px-4 sm:px-6 md:px-8">
+            <div className="pt-15 mx-auto px-4 sm:px-6 md:px-8">
               <div className="mb-6">
                 <h2 className="px-6 text-2xl font-bold text-gray-900">{getPageTitle()}</h2>
               </div>

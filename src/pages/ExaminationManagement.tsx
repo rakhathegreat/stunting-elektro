@@ -9,12 +9,22 @@ import { Pagination } from '../features/shared/components/Pagination';
 import DeleteModal from '../components/DeleteModal';
 import type { Examination } from '../types/examination';
 
-const formatDate = (dateString: string) =>
-  new Date(dateString).toLocaleDateString('id-ID', {
+const formatDate = (dateString?: string | null) => {
+  if (!dateString) {
+    return '-';
+  }
+
+  const parsed = new Date(dateString);
+  if (Number.isNaN(parsed.getTime())) {
+    return '-';
+  }
+
+  return parsed.toLocaleDateString('id-ID', {
     day: '2-digit',
     month: 'short',
     year: 'numeric',
   });
+};
 
 const ExaminationManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -24,6 +34,8 @@ const ExaminationManagement = () => {
   const [selectedAnalisis, setSelectedAnalisis] = useState<Examination | null>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const debouncedSearch = useDebounce(searchTerm, 400);
+  const dangerActionButtonClass =
+    'inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-red-600 transition hover:border-red-500 hover:bg-red-50 hover:text-red-600 hover:cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1';
 
   const {
     data: examinations,
@@ -94,7 +106,7 @@ const ExaminationManagement = () => {
                   placeholder="Cari data anak..."
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
-                  className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="block text-sm w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
@@ -198,11 +210,13 @@ const ExaminationManagement = () => {
                         <td className="px-6 py-4 text-sm">{formatDate(item.created_at)}</td>
                         <td className="px-6 py-4">
                           <button
+                            type="button"
+                            aria-label={`Hapus pemeriksaan ${item.DataAnak?.nama || ''}`}
                             onClick={() => {
                               setSelectedAnalisis(item);
                               setShowDeleteModal(true);
                             }}
-                            className="rounded p-2 text-red-600 transition hover:bg-red-400 hover:text-white"
+                            className={dangerActionButtonClass}
                           >
                             <Trash2 className="h-4 w-4" />
                           </button>

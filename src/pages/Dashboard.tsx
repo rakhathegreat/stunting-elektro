@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Baby, Stethoscope, TrendingUp, Users } from 'lucide-react';
+import { Baby, Stethoscope, TrendingDown, TrendingUp, Users } from 'lucide-react';
 import BarChart from '../components/Dashboard/BarChart';
-import Example from '../components/Dashboard/PieChart';
+import StatusPieChart from '../components/Dashboard/PieChart';
 import { FullScreenLoader } from '../features/shared/components/FullScreenLoader';
 import { useSupabaseResource } from '../hooks/useSupabaseResource';
 import { getAnalysisRows, getDashboardCounts, type AnalysisRow } from '../services/dashboardService';
@@ -88,7 +88,7 @@ const Dashboard = () => {
         color: 'blue',
       },
       {
-        name: 'Total Bayi',
+        name: 'Total Anak',
         stat: counts.babies.toLocaleString(),
         change: `${trend.babies >= 0 ? '+' : ''}${trend.babies}`,
         icon: Baby,
@@ -158,7 +158,12 @@ const Dashboard = () => {
               <p
                 className={`ml-3 flex items-baseline text-sm font-semibold ${Number(item.change) >= 0 ? 'text-green-600' : 'text-red-600'}`}
               >
-                <TrendingUp className="mr-1 h-4 w-4 flex-shrink-0 text-green-500" aria-hidden="true" />
+                {Number(item.change) >= 0 ? 
+                  <TrendingUp className="mr-1 h-4 w-4 flex-shrink-0 text-green-500" aria-hidden="true" />
+                  :
+                  <TrendingDown className="mr-1 h-4 w-4 flex-shrink-0 text-red-500" aria-hidden="true" />
+                }
+                
                 <span className="sr-only">{Number(item.change) >= 0 ? 'Meningkat' : 'Menurun'} sebesar</span>
                 {item.change}
               </p>
@@ -167,8 +172,8 @@ const Dashboard = () => {
         ))}
       </div>
 
-      <div className="grid grid-cols-1 gap-3 lg:grid-cols-3 lg:grid-rows-2">
-        <div className="lg:col-span-3">
+      <div className="flex flex-col gap-3">
+        <div className="h-fit">
           <div className="glass rounded-2xl border-0 shadow-modern">
             <div className="px-4 pt-5 sm:pt-6">
               <h3 className="mb-6 text-lg font-bold leading-6 text-gray-900">Tren Pemeriksaan Bulanan</h3>
@@ -177,25 +182,25 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div className="lg:col-span-3 h-fit">
+        <div className="h-fit">
           <div className="glass rounded-2xl border-0 shadow-modern">
             <div className="px-4 py-5 sm:p-6">
               <h3 className="mb-6 text-lg font-bold leading-6 text-gray-900">Distribusi Status Gizi</h3>
-              <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                <div className="rounded-2xl border border-gray-300 p-4">
+              <div className="flex flex-col gap-5 md:flex-row">
+                <div className="flex-1 rounded-2xl border border-gray-300 p-4">
                   <h3 className="mb-2 font-medium">Laki-laki</h3>
                   <p className="mb-4 text-sm text-gray-600">Persentase status berat dan tinggi pada anak laki-laki saat ini</p>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <Example data={pieData.maleHeight} />
-                    <Example data={pieData.maleWeight} />
+                    <StatusPieChart data={pieData.maleHeight} />
+                    <StatusPieChart data={pieData.maleWeight} />
                   </div>
                 </div>
-                <div className="rounded-2xl border border-gray-300 p-4">
+                <div className="flex-1 rounded-2xl border border-gray-300 p-4">
                   <h3 className="mb-2 font-medium">Perempuan</h3>
                   <p className="mb-4 text-sm text-gray-600">Persentase status berat dan tinggi pada anak perempuan saat ini</p>
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                    <Example data={pieData.femaleHeight} />
-                    <Example data={pieData.femaleWeight} />
+                    <StatusPieChart data={pieData.femaleHeight} />
+                    <StatusPieChart data={pieData.femaleWeight} />
                   </div>
                 </div>
               </div>
@@ -203,6 +208,7 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
     </div>
   );
 };

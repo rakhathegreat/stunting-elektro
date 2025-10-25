@@ -75,6 +75,14 @@ const EditModal: React.FC<EditModalProps> = ({ child, onClose, onUpdate }) => {
             <div className="space-y-5">
               <div>
                 <Input 
+                  name="No KK"
+                  value={formData.id_orang_tua}
+                  onChange={(e) => setFormData({...formData, id_orang_tua: e.target.value})}
+                  placeholder="Masukkan nomor kartu keluarga"
+                />
+              </div>
+              <div>
+                <Input 
                   name="Nama Anak" 
                   value={formData.nama}
                   onChange={(e) => setFormData({...formData, nama: e.target.value})}
@@ -103,7 +111,7 @@ const EditModal: React.FC<EditModalProps> = ({ child, onClose, onUpdate }) => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Jenis Kelamin</label>
                   <select 
@@ -117,14 +125,6 @@ const EditModal: React.FC<EditModalProps> = ({ child, onClose, onUpdate }) => {
                     <option value="Laki-laki">Laki-laki</option>
                     <option value="Perempuan">Perempuan</option>
                   </select>
-                </div>
-                <div>
-                  <Input 
-                    name="No KK"
-                    value={formData.id_orang_tua}
-                    onChange={(e) => setFormData({...formData, id_orang_tua: e.target.value})}
-                    placeholder="Masukkan nomor kartu keluarga"
-                  />
                 </div>
               </div>
             </div>
@@ -159,16 +159,16 @@ const EditModal: React.FC<EditModalProps> = ({ child, onClose, onUpdate }) => {
             <button 
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              className="px-5 border border-gray-300 py-2.5 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-300 hover:cursor-pointer transition-colors"
             >
               Batal
             </button>
             <button 
               type="submit"
               disabled={loading}
-              className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors"
+              className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 hover:cursor-pointer disabled:opacity-50 transition-colors"
             >
-              {loading ? "Menyimpan..." : "Simpan Perubahan"}
+              {loading ? "Menyimpan..." : "Simpan"}
             </button>
           </div>
         </form>

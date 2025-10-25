@@ -30,22 +30,22 @@ const Login = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 px-4 py-12">
+    <div className="flex min-h-screen items-center justify-center bg-gray-100 px-4 py-12">
       <div className="w-full max-w-md space-y-8">
-        <div className="glass rounded-2xl p-8 shadow-lg">
+        <div className="glass rounded-2xl px-8 py-12 shadow-lg">
           <div className="text-center">
             <div className="flex justify-center">
               <div className="rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 p-4 shadow">
                 <Stethoscope className="h-10 w-10 text-white" />
               </div>
             </div>
-            <h2 className="mt-6 bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-3xl font-bold text-transparent">
+            <h2 className="mt-3 bg-gradient-to-r from-gray-900 to-gray-700 bg-clip-text text-2xl font-bold text-transparent">
               StuntingCare
             </h2>
-            <p className="mt-3 font-medium text-gray-500">Sistem Deteksi Stunting Berbasis AI</p>
+            <p className="text-sm  font-medium text-gray-500">Sistem Deteksi Stunting Berbasis AI</p>
           </div>
 
-          <form className="mt-10 space-y-6" onSubmit={handleSubmit}>
+          <form className="mt-5 space-y-6" onSubmit={handleSubmit}>
             {error ? (
               <div className="rounded border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-600">{error}</div>
             ) : null}
@@ -60,7 +60,7 @@ const Login = () => {
                 required
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
-                className="w-full rounded-xl border bg-white/80 px-4 py-3"
+                className="text-sm placeholder:text-sm w-full rounded-xl border bg-white/80 px-4 py-3"
                 placeholder="Masukkan email Anda"
                 autoComplete="email"
               />
@@ -77,7 +77,7 @@ const Login = () => {
                   required
                   value={password}
                   onChange={(event) => setPassword(event.target.value)}
-                  className="w-full rounded-xl border bg-white/80 px-4 py-3 pr-12"
+                  className="text-sm placeholder:text-sm w-full rounded-xl border bg-white/80 px-4 py-3 pr-12"
                   placeholder="Masukkan password Anda"
                   autoComplete="current-password"
                 />
@@ -95,16 +95,11 @@ const Login = () => {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3 font-semibold text-white transition disabled:opacity-50"
+              className="text-sm w-full rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 py-3 font-semibold text-white transition disabled:opacity-50"
             >
               {loading ? 'Memproses...' : 'Masuk'}
             </button>
           </form>
-
-          <div className="mt-8 text-center text-sm text-gray-400">
-            <p>Demo Account:</p>
-            <p className="mt-2 rounded bg-gray-50 px-3 py-2 font-mono">admin@stuntingcare.com / admin123</p>
-          </div>
         </div>
       </div>
     </div>

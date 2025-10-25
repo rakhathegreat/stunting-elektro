@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase/client';
+import { startOfDay, endOfDay } from 'date-fns';
 
 export interface DashboardCounts {
   parents: number;
@@ -15,10 +16,15 @@ export interface AnalysisRow {
 }
 
 export const getDashboardCounts = async (): Promise<DashboardCounts> => {
+  const today = new Date();
+
+  const start = startOfDay(today).toISOString();
+  const end = endOfDay(today).toISOString();
+  
   const [{ count: parents }, { count: babies }, { count: checkups }] = await Promise.all([
     supabase.from('DataOrangTua').select('*', { count: 'exact', head: true }),
     supabase.from('DataAnak').select('*', { count: 'exact', head: true }),
-    supabase.from('Analisis').select('*', { count: 'exact', head: true }),
+    supabase.from('Analisis').select('*', { count: 'exact', head: true }).gte('created_at', start).lt('created_at', end),
   ]);
 
   return {
@@ -41,16 +47,19 @@ export const getAnalysisRows = async (): Promise<AnalysisRow[]> => {
 };
 
 export interface MonthlyAnalysisRow {
-  status_tinggi: string;
-  status_berat: string;
-  bulan: number;
+  status_tinggi: string | null;
+  status_berat: string | null;
+  created_at: string;
 }
 
 export const getMonthlyAnalysis = async (): Promise<MonthlyAnalysisRow[]> => {
+  const startOfYear = new Date(new Date().getFullYear(), 0, 1).toISOString();
+
   const { data, error } = await supabase
     .from('Analisis')
-    .select('status_tinggi, status_berat, bulan')
-    .order('bulan', { ascending: true });
+    .select('status_tinggi, status_berat, created_at')
+    .gte('created_at', startOfYear)
+    .order('created_at', { ascending: true });
 
   if (error) {
     throw new Error(error.message);

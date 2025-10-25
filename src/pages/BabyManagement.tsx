@@ -5,6 +5,7 @@ import {
   Plus,
   Search,
   Trash2,
+  TrendingDown,
   TrendingUp,
   User,
   Users,
@@ -52,6 +53,10 @@ const BabyManagement = () => {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedChild, setSelectedChild] = useState<Child | null>(null);
+  const actionButtonClass =
+    'inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-600 transition hover:border-blue-500 hover:bg-blue-50 hover:text-blue-600 hover:cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1';
+  const dangerActionButtonClass =
+    'inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-red-600 transition hover:border-red-500 hover:bg-red-50 hover:text-red-600 hover:cursor-pointer  focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1';
 
   const {
     data: children,
@@ -121,7 +126,7 @@ const BabyManagement = () => {
       },
       {
         name: 'Rata-Rata Usia',
-        stat: `${avgAge.toFixed(1)} bln`,
+        stat: `${avgAge.toFixed(1)}`,
         change: '+0',
         color: 'blue',
         icon: User,
@@ -210,10 +215,17 @@ const BabyManagement = () => {
             </dt>
             <dd className="ml-16 flex items-baseline pb-2">
               <p className="text-2xl font-bold text-gray-900">{item.stat}</p>
-              <p className={`ml-3 flex items-baseline text-sm font-semibold ${Number(item.change) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                <TrendingUp className="mr-1 h-4 w-4 flex-shrink-0" aria-hidden="true" />
-                {item.change}
-              </p>
+              {Number(item.change) >= 0 ? 
+                <p className='ml-3 flex items-baseline text-sm font-semibold text-green-600'>
+                  <TrendingUp className="mr-1 h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                  {item.change}
+                </p> 
+                : 
+                <p className='ml-3 flex items-baseline text-sm font-semibold text-red-600'>
+                  <TrendingDown className="mr-1 h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                  {item.change}
+                </p> 
+              }
             </dd>
           </div>
         ))}
@@ -222,7 +234,6 @@ const BabyManagement = () => {
       <div className="w-full px-6">
         <div className="rounded-2xl bg-white shadow-md">
           <div className="px-4 py-5 sm:p-6">
-            <h3 className="mb-6 text-lg font-bold leading-6 text-gray-900">Data Anak</h3>
 
             <div className="flex flex-col gap-4 pb-4 lg:flex-row lg:items-center lg:justify-between">
               <div className="flex w-full flex-col gap-3 sm:flex-row">
@@ -235,7 +246,7 @@ const BabyManagement = () => {
                     placeholder="Cari anak atau orang tua..."
                     value={searchTerm}
                     onChange={(event) => setSearchTerm(event.target.value)}
-                    className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="block text-sm w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <select
@@ -273,7 +284,7 @@ const BabyManagement = () => {
 
               <button
                 onClick={() => setShowAddModal(true)}
-                className="inline-flex items-center rounded-lg border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
+                className="inline-flex items-center rounded-lg border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700 hover:cursor-pointer"
               >
                 <Plus className="mr-2 h-4 w-4" />
                 Tambah
@@ -316,7 +327,7 @@ const BabyManagement = () => {
                     paginatedChildren.map((child) => (
                       <tr 
                         key={child.id}
-                        className="transition-colors hover:bg-gray-100"
+                        className="transition-colors hover:bg-gray-200 hover:cursor-pointer"
                         onClick={() => navigate(`/babies/${child.id}`)}
                       >
                         <td className="px-6 py-2 text-xs font-medium text-gray-900">{child.nama}</td>
@@ -354,8 +365,11 @@ const BabyManagement = () => {
                         <td className="px-6 py-2">
                           <div className="flex items-center gap-2">
                             <button
-                              className="rounded p-2 text-gray-600 transition hover:bg-blue-400 hover:text-white"
-                              onClick={() => {
+                              type="button"
+                              aria-label={`Edit data ${child.nama}`}
+                              className={actionButtonClass}
+                              onClick={(event) => {
+                                event.stopPropagation();
                                 setSelectedChild(child);
                                 setShowEditModal(true);
                               }}
@@ -363,8 +377,13 @@ const BabyManagement = () => {
                               <Edit className="h-4 w-4" />
                             </button>
                             <button
-                              className="rounded p-2 text-red-600 transition hover:bg-red-400 hover:text-white"
-                              onClick={() => openDeleteModal(child)}
+                              type="button"
+                              aria-label={`Hapus data ${child.nama}`}
+                              className={dangerActionButtonClass}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                openDeleteModal(child);
+                              }}
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>

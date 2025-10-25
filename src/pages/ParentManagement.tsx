@@ -3,12 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import {
   Edit,
   Eye,
-  Mail,
-  MapPin,
-  Phone,
   Plus,
   Search,
   Trash2,
+  TrendingDown,
   TrendingUp,
   Users,
 } from 'lucide-react';
@@ -47,8 +45,26 @@ const ParentManagement = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [formData, setFormData] = useState({ nama: '', email: '', no_hp: '' });
+  const createInitialFormState = () => ({
+    no_kk: '',
+    nama_ayah: '',
+    nama_ibu: '',
+    tanggal_lahir_ayah: '',
+    tanggal_lahir_ibu: '',
+    no_hp: '',
+    email: '',
+    alamat: '',
+    status_aktif: true,
+    kunjungan_terakhir: today(),
+    pekerjaan: '',
+    pendidikan: '',
+  });
+  const [formData, setFormData] = useState(createInitialFormState);
   const debouncedSearch = useDebounce(searchTerm, 400);
+  const actionButtonClass =
+    'inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-gray-600 transition hover:border-blue-500 hover:bg-blue-50 hover:text-blue-600 hover:cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-1';
+  const dangerActionButtonClass =
+    'inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-red-600 transition hover:border-red-500 hover:bg-red-50 hover:text-red-600 hover:cursor-pointer focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-1';
 
   const {
     data: parents,
@@ -67,7 +83,7 @@ const ParentManagement = () => {
 
   useEffect(() => {
     const totalParents = parents.length;
-    const aktifParents = parents.filter((p) => p.status_aktif === 'Aktif').length;
+    const aktifParents = parents.filter((p) => p.status_aktif === true).length;
     const totalChildren = children.length;
 
     const history = loadHistory();
@@ -98,7 +114,7 @@ const ParentManagement = () => {
   const statsData = useMemo(
     () => {
       const totalParents = parents.length;
-      const aktifParents = parents.filter((parent) => parent.status_aktif === 'Aktif').length;
+      const aktifParents = parents.filter((parent) => parent.status_aktif === true).length;
       const totalChildren = children.length;
       const yesterdayKey = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
       const inactiveYesterday =
@@ -116,14 +132,14 @@ const ParentManagement = () => {
           name: 'Aktif',
           stat: aktifParents.toLocaleString('id-ID'),
           change: `${trend.aktif >= 0 ? '+' : ''}${trend.aktif}`,
-          color: 'green',
+          color: 'blue',
           icon: Users,
         },
         {
           name: 'Tidak Aktif',
           stat: (totalParents - aktifParents).toLocaleString('id-ID'),
           change: `${totalParents - aktifParents - inactiveYesterday}`,
-          color: 'red',
+          color: 'blue',
           icon: Users,
         },
         {
@@ -167,14 +183,38 @@ const ParentManagement = () => {
   const handleAddParent = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     try {
+      const trimmedKK = formData.no_kk.trim();
+      if (!trimmedKK) {
+        toast.error('Nomor KK wajib diisi');
+        return;
+      }
+
+      if (!/^\d{16}$/.test(trimmedKK)) {
+        toast.error('Nomor KK harus terdiri dari 16 digit angka');
+        return;
+      }
+
+      const payload = {
+        id: trimmedKK,
+        nama_ayah: formData.nama_ayah.trim(),
+        nama_ibu: formData.nama_ibu.trim(),
+        tanggal_lahir_ayah: formData.tanggal_lahir_ayah,
+        tanggal_lahir_ibu: formData.tanggal_lahir_ibu,
+        no_hp: formData.no_hp.trim(),
+        email: formData.email.trim(),
+        alamat: formData.alamat.trim(),
+        status_aktif: formData.status_aktif,
+        kunjungan_terakhir: formData.kunjungan_terakhir,
+        pekerjaan: formData.pekerjaan.trim() || null,
+        pendidikan: formData.pendidikan.trim() || null,
+      };
+
       await createParent({
-        nama: formData.nama,
-        email: formData.email,
-        no_hp: formData.no_hp,
+        ...payload,
       });
       toast.success('Data orang tua berhasil ditambahkan');
       setShowAddModal(false);
-      setFormData({ nama: '', email: '', no_hp: '' });
+      setFormData(createInitialFormState());
       await refreshParents();
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Gagal menambahkan data orang tua';
@@ -200,9 +240,13 @@ const ParentManagement = () => {
               <p className="ml-16 truncate text-sm font-semibold text-gray-500">{item.name}</p>
             </dt>
             <dd className="ml-16 flex items-baseline pb-2">
-              <p className="text-3xl font-bold text-gray-900">{item.stat}</p>
+              <p className="text-2xl font-bold text-gray-900">{item.stat}</p>
               <p className={`ml-3 flex items-baseline text-sm font-semibold ${Number(item.change) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                <TrendingUp className="mr-1 h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                {Number(item.change) >= 0 ?
+                  <TrendingUp className="mr-1 h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                :
+                  <TrendingDown className="mr-1 h-4 w-4 flex-shrink-0" aria-hidden="true" />
+                }
                 {item.change}
               </p>
             </dd>
@@ -225,7 +269,7 @@ const ParentManagement = () => {
                   placeholder="Cari orang tua..."
                   value={searchTerm}
                   onChange={(event) => setSearchTerm(event.target.value)}
-                  className="block w-full rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="block w-full text-sm rounded-lg border border-gray-300 py-2 pl-10 pr-3 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <button
@@ -236,15 +280,12 @@ const ParentManagement = () => {
                 Tambah Orang Tua
               </button>
             </div>
-
             <div className="w-full overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-100">
                 <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                   <tr>
                     <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Nama</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Kontak</th>
                     <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Alamat</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Pekerjaan</th>
                     <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Jumlah Anak</th>
                     <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Status</th>
                     <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Tanggal Daftar</th>
@@ -281,52 +322,59 @@ const ParentManagement = () => {
                           {parent.nama_ayah} & <br />
                           {parent.nama_ibu}
                         </td>
-                        <td className="px-6 py-4">
-                          <div className="space-y-1 text-sm">
-                            <div className="flex items-center font-medium">
-                              <Phone className="mr-2 h-3 w-3" />
-                              {parent.no_hp || '-'}
-                            </div>
-                            <div className="flex items-center text-muted-foreground">
-                              <Mail className="mr-2 h-3 w-3" />
-                              {parent.email || '-'}
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-sm text-muted-foreground">
+                        <td className="px-6 py-4 text-sm text-muted-foreground text-gray-700">
                           <div className="mt-1 flex items-center">
-                            <MapPin className="mr-1 h-3 w-3" />
                             {parent.alamat || '-'}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-sm">
-                          <div className="font-medium">{parent.pekerjaan || '-'}</div>
-                          <div className="text-muted-foreground">{parent.pendidikan || '-'}</div>
-                        </td>
-                        <td className="px-6 py-4 text-sm font-medium">{getChildCount(String(parent.id))} anak</td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-4 text-sm text-gray-700 font-medium">{getChildCount(String(parent.id))} anak</td>
+                        <td className="px-6 py-2 text-sm text-gray-700">
                           <span
-                            className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${
-                              parent.status_aktif === 'Aktif'
+                            className={`inline-flex items-center whitespace-nowrap rounded-full px-3 py-1 text-xs font-bold ${
+                              parent.status_aktif
                                 ? 'bg-gradient-to-r from-green-100 to-emerald-100 text-green-800'
                                 : 'bg-gradient-to-r from-red-100 to-pink-100 text-red-800'
                             }`}
                           >
-                            {parent.status_aktif}
+                            {parent.status_aktif ? 'Aktif' : 'Tidak Aktif'}
                           </span>
                         </td>
-                        <td className="px-6 py-4 text-sm font-medium text-muted-foreground">
+                        <td className="px-6 py-4 text-sm text-gray-700 font-medium text-muted-foreground">
                           {parent.created_at?.slice(0, 10) || '-'}
                         </td>
                         <td className="px-6 py-4">
                           <div className="flex items-center gap-2">
-                            <button className="rounded p-2 text-gray-600 transition hover:bg-blue-400 hover:text-white">
+                            <button
+                              type="button"
+                              aria-label="Lihat detail orang tua"
+                              className={actionButtonClass}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                navigate(`/parents/${parent.id}`);
+                              }}
+                            >
                               <Eye className="h-4 w-4" />
                             </button>
-                            <button className="rounded p-2 text-gray-600 transition hover:bg-blue-400 hover:text-white">
+                            <button
+                              type="button"
+                              aria-label="Edit data orang tua"
+                              className={actionButtonClass}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                navigate(`/parents/${parent.id}`, { state: { startEdit: true } });
+                              }}
+                            >
                               <Edit className="h-4 w-4" />
                             </button>
-                            <button className="rounded p-2 text-red-600 transition hover:bg-red-400 hover:text-white">
+                            <button
+                              type="button"
+                              aria-label="Hapus data orang tua"
+                              className={dangerActionButtonClass}
+                              onClick={(event) => {
+                                event.stopPropagation();
+                                toast.info('Fitur hapus data orang tua belum tersedia');
+                              }}
+                            >
                               <Trash2 className="h-4 w-4" />
                             </button>
                           </div>
@@ -352,48 +400,154 @@ const ParentManagement = () => {
 
       {showAddModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-600/50 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-lg bg-white p-6">
+          <div className="w-full max-w-5xl rounded-lg bg-white p-6">
             <h3 className="mb-4 text-lg font-medium text-gray-900">Tambah Orang Tua Baru</h3>
-            <form onSubmit={handleAddParent} className="space-y-4">
-              <input
-                type="text"
-                placeholder="Nama Lengkap"
-                value={formData.nama}
-                onChange={(event) => setFormData({ ...formData, nama: event.target.value })}
-                className="w-full rounded-lg border px-3 py-2"
-                required
-              />
-              <input
-                type="email"
-                placeholder="Email"
-                value={formData.email}
-                onChange={(event) => setFormData({ ...formData, email: event.target.value })}
-                className="w-full rounded-lg border px-3 py-2"
-                required
-              />
-              <input
-                type="tel"
-                placeholder="Nomor Telepon"
-                value={formData.no_hp}
-                onChange={(event) => setFormData({ ...formData, no_hp: event.target.value })}
-                className="w-full rounded-lg border px-3 py-2"
-                required
-              />
-              <div className="flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="rounded-lg bg-gray-200 px-4 py-2 text-sm text-gray-700"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white transition hover:bg-blue-700"
-                >
-                  Simpan
-                </button>
+            <form onSubmit={handleAddParent}>
+              <div className='grid grid-cols-2 gap-3'>
+
+                <div className="col-start-1 space-y-4 rounded-lg border border-gray-200 px-4 py-6">
+                  <h4 className="text-sm font-semibold text-gray-800">Informasi Identitas</h4>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1 sm:col-span-2">
+                      <label htmlFor="no_kk" className="text-sm font-medium text-gray-700">
+                        Nomor KK
+                      </label>
+                      <input
+                        id="no_kk"
+                        type="text"
+                        value={formData.no_kk}
+                        onChange={(event) => setFormData({ ...formData, no_kk: event.target.value })}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                        placeholder="Masukkan nomor KK"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label htmlFor="nama_ayah" className="text-sm font-medium text-gray-700">
+                        Nama Ayah
+                      </label>
+                      <input
+                        id="nama_ayah"
+                        type="text"
+                        value={formData.nama_ayah}
+                        placeholder='Masuan nama ayah'
+                        onChange={(event) => setFormData({ ...formData, nama_ayah: event.target.value })}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label htmlFor="nama_ibu" className="text-sm font-medium text-gray-700">
+                        Nama Ibu
+                      </label>
+                      <input
+                        id="nama_ibu"
+                        type="text"
+                        value={formData.nama_ibu}
+                        placeholder='Masukan nama ibu'
+                        onChange={(event) => setFormData({ ...formData, nama_ibu: event.target.value })}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label htmlFor="tanggal_lahir_ayah" className="text-sm font-medium text-gray-700">
+                        Tanggal Lahir Ayah
+                      </label>
+                      <input
+                        id="tanggal_lahir_ayah"
+                        type="date"
+                        value={formData.tanggal_lahir_ayah}
+                        onChange={(event) =>
+                          setFormData({ ...formData, tanggal_lahir_ayah: event.target.value })
+                        }
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-500"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label htmlFor="tanggal_lahir_ibu" className="text-sm font-medium text-gray-700">
+                        Tanggal Lahir Ibu
+                      </label>
+                      <input
+                        id="tanggal_lahir_ibu"
+                        type="date"
+                        value={formData.tanggal_lahir_ibu}
+                        onChange={(event) =>
+                          setFormData({ ...formData, tanggal_lahir_ibu: event.target.value })
+                        }
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2 text-gray-500"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="col-start-2 space-y-4 rounded-lg border border-gray-200 px-4 py-6">
+                  <h4 className="text-sm font-semibold text-gray-800">Kontak & Alamat</h4>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="space-y-1">
+                      <label htmlFor="email" className="text-sm font-medium text-gray-700">
+                        Email
+                      </label>
+                      <input
+                        id="email"
+                        type="email"
+                        value={formData.email}
+                        placeholder='Masukan email'
+                        onChange={(event) => setFormData({ ...formData, email: event.target.value })}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label htmlFor="no_hp" className="text-sm font-medium text-gray-700">
+                        Nomor Telepon
+                      </label>
+                      <input
+                        id="no_hp"
+                        type="tel"
+                        value={formData.no_hp}
+                        placeholder='Masukan nomor telepon'
+                        onChange={(event) => setFormData({ ...formData, no_hp: event.target.value })}
+                        className="w-full rounded-lg border border-gray-300 px-3 py-2"
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label htmlFor="alamat" className="text-sm font-medium text-gray-700">
+                      Alamat Lengkap
+                    </label>
+                    <textarea
+                      id="alamat"
+                      value={formData.alamat}
+                      onChange={(event) => setFormData({ ...formData, alamat: event.target.value })}
+                      className="h-full w-full rounded-lg border border-gray-300 px-3 py-2"
+                      required
+                    />
+                  </div>
+                </div>
+
               </div>
+              <div className="flex justify-end gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAddModal(false);
+                      setFormData(createInitialFormState());
+                    }}
+                    className="rounded-lg bg-gray-200 border border-gray-300 px-4 py-2 text-sm text-gray-700 hover:bg-gray-300 hover:cursor-pointer"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white transition hover:bg-blue-700 hover:cursor-pointer"
+                  >
+                    Simpan
+                  </button>
+                </div>
             </form>
           </div>
         </div>

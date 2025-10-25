@@ -37,31 +37,49 @@ const GrowthChart = ({ data, selectedMetric, gender: genderProp }: GrowthChartPr
         ? whoStandards.weightBoys
         : whoStandards.weightGirls;
 
-    const growthMonths = data.map((record) => record.bulan);
-    const filteredSource = source.filter((entry) => growthMonths.includes(entry.bulan));
-
-    return filteredSource.map((entry) => {
-      const record = data.find((item) => item.bulan === entry.bulan);
-      if (selectedMetric === 'tinggi') {
-        return {
-          bulan: entry.bulan,
-          sangat_pendek: entry.sd3neg - 3,
-          pendek: entry.sd2neg,
-          normal: entry.median,
-          tinggi: entry.sd1,
-          anak: record?.tinggi ?? null,
-        };
+    const childMap = new Map<number, GrowthRecord>();
+    data.forEach((record) => {
+      if (record.bulan !== undefined && record.bulan !== null) {
+        childMap.set(record.bulan, record);
       }
-
-      return {
-        bulan: entry.bulan,
-        sangat_kurus: entry.sd3neg,
-        kurus: entry.sd2neg,
-        normal: entry.median,
-        gemuk: entry.sd1,
-        anak: record?.berat ?? null,
-      };
     });
+
+    const allMonths = new Set<number>();
+    source.forEach((who) => allMonths.add(who.bulan));
+    data.forEach((record) => allMonths.add(record.bulan ?? 0));
+
+    return Array.from(allMonths)
+      .sort((a, b) => a - b)
+      .map((month) => {
+        const who = source.find((item) => item.bulan === month);
+        const record = childMap.get(month);
+
+        const sangatPendek = who?.sd3neg ?? null;
+        const pendek = who?.sd2neg ?? null;
+        const normal = who?.median ?? null;
+        const tinggi = who?.sd1 ?? null;
+        const anakValue = selectedMetric === 'tinggi' ? record?.tinggi : record?.berat;
+
+        if (selectedMetric === 'tinggi') {
+          return {
+            bulan: month,
+            sangat_pendek: sangatPendek,
+            pendek,
+            normal,
+            tinggi,
+            anak: anakValue ?? null,
+          };
+        }
+
+        return {
+          bulan: month,
+          sangat_kurus: sangatPendek,
+          kurus: pendek,
+          normal,
+          gemuk: tinggi,
+          anak: anakValue ?? null,
+        };
+      });
   }, [data, selectedMetric, gender]);
 
   const yLabel = selectedMetric === 'tinggi' ? 'Tinggi (cm)' : 'Berat (kg)';
@@ -92,7 +110,14 @@ const GrowthChart = ({ data, selectedMetric, gender: genderProp }: GrowthChartPr
             </>
           )}
 
-          <Line type="monotone" dataKey="anak" stroke="#6082B6" name="Data Anak" strokeWidth={3} />
+          <Line
+            type="monotone"
+            dataKey="anak"
+            stroke="#6082B6"
+            name="Data Anak"
+            strokeWidth={3}
+            connectNulls
+          />
         </LineChart>
       </ResponsiveContainer>
     </div>
