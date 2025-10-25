@@ -75,8 +75,8 @@ const Login = () => {
                   <CircuitBoard className="h-4 w-4" />
                 </span>
                 <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-slate-900">Integrasi IoT Klinik</p>
-                  <p className="text-xs text-slate-600 sm:text-sm">Perangkat ukur terhubung mengirim data langsung.</p>
+                  <p className="truncate text-sm font-semibold text-slate-900">Integrasi IoT</p>
+                  <p className="text-xs text-slate-600 sm:text-sm">Perangkat ukur cerdas berbasis IoT.</p>
                 </div>
               </div>
 
