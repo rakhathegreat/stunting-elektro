@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Edit,
   Plus,
@@ -41,6 +42,7 @@ const saveHistory = (list: Snapshot[]) => {
 };
 
 const BabyManagement = () => {
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const debouncedSearch = useDebounce(searchTerm, 400);
   const [statusTinggiFilter, setStatusTinggiFilter] = useState('');
@@ -107,21 +109,21 @@ const BabyManagement = () => {
         name: 'Jumlah Laki-laki',
         stat: new Intl.NumberFormat('id-ID').format(boys),
         change: `${trend.boys >= 0 ? '+' : ''}${trend.boys}`,
-        color: 'green',
+        color: 'blue',
         icon: Users,
       },
       {
         name: 'Jumlah Perempuan',
         stat: new Intl.NumberFormat('id-ID').format(girls),
         change: `${trend.girls >= 0 ? '+' : ''}${trend.girls}`,
-        color: 'yellow',
+        color: 'blue',
         icon: Users,
       },
       {
         name: 'Rata-Rata Usia',
         stat: `${avgAge.toFixed(1)} bln`,
         change: '+0',
-        color: 'indigo',
+        color: 'blue',
         icon: User,
       },
     ],
@@ -139,8 +141,13 @@ const BabyManagement = () => {
           .toLowerCase()
           .includes(term);
 
-      const matchStatusTinggi = !statusTinggiFilter || (child.status_tinggi || '') === statusTinggiFilter;
-      const matchStatusBerat = !statusBeratFilter || (child.status_berat || '') === statusBeratFilter;
+      const heightStatus = (child.status_tinggi || '').toLowerCase();
+      const weightStatus = (child.status_berat || '').toLowerCase();
+      const heightFilter = statusTinggiFilter.toLowerCase();
+      const weightFilter = statusBeratFilter.toLowerCase();
+
+      const matchStatusTinggi = !statusTinggiFilter || heightStatus === heightFilter;
+      const matchStatusBerat = !statusBeratFilter || weightStatus === weightFilter;
       const matchGender = !genderFilter || (child.gender || '') === genderFilter;
 
       return matchSearch && matchStatusTinggi && matchStatusBerat && matchGender;
@@ -202,7 +209,7 @@ const BabyManagement = () => {
               <p className="ml-16 truncate text-sm font-semibold text-gray-500">{item.name}</p>
             </dt>
             <dd className="ml-16 flex items-baseline pb-2">
-              <p className="text-3xl font-bold text-gray-900">{item.stat}</p>
+              <p className="text-2xl font-bold text-gray-900">{item.stat}</p>
               <p className={`ml-3 flex items-baseline text-sm font-semibold ${Number(item.change) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                 <TrendingUp className="mr-1 h-4 w-4 flex-shrink-0" aria-hidden="true" />
                 {item.change}
@@ -269,7 +276,7 @@ const BabyManagement = () => {
                 className="inline-flex items-center rounded-lg border border-transparent bg-blue-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-blue-700"
               >
                 <Plus className="mr-2 h-4 w-4" />
-                Tambah Anak
+                Tambah
               </button>
             </div>
 
@@ -277,13 +284,13 @@ const BabyManagement = () => {
               <table className="min-w-full divide-y divide-gray-100">
                 <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Nama</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Orang Tua</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Jenis Kelamin</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Umur</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Status Tinggi</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Status Berat</th>
-                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Aksi</th>
+                    <th className="px-6 py-2 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Nama</th>
+                    <th className="px-6 py-2 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Orang Tua</th>
+                    <th className="px-6 py-2 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Jenis Kelamin</th>
+                    <th className="px-6 py-2 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Umur (bulan)</th>
+                    <th className="px-6 py-2 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Status Tinggi</th>
+                    <th className="px-6 py-2 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Status Berat</th>
+                    <th className="px-6 py-2 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Aksi</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100 bg-white/50">
@@ -307,16 +314,44 @@ const BabyManagement = () => {
                     </tr>
                   ) : (
                     paginatedChildren.map((child) => (
-                      <tr key={child.id} className="transition-colors hover:bg-gray-100">
-                        <td className="px-6 py-4 text-sm font-medium text-gray-900">{child.nama}</td>
-                        <td className="px-6 py-4 text-sm text-gray-700">
+                      <tr 
+                        key={child.id}
+                        className="transition-colors hover:bg-gray-100"
+                        onClick={() => navigate(`/babies/${child.id}`)}
+                      >
+                        <td className="px-6 py-2 text-xs font-medium text-gray-900">{child.nama}</td>
+                        <td className="px-6 py-2 text-sm text-gray-700">
                           {child.DataOrangTua?.nama_ayah} & {child.DataOrangTua?.nama_ibu}
                         </td>
-                        <td className="px-6 py-4 text-sm capitalize text-gray-700">{child.gender}</td>
-                        <td className="px-6 py-4 text-sm text-gray-700">{child.umur} bulan</td>
-                        <td className="px-6 py-4 text-sm text-gray-700">{child.status_tinggi}</td>
-                        <td className="px-6 py-4 text-sm text-gray-700">{child.status_berat}</td>
-                        <td className="px-6 py-4">
+                        <td className="px-6 py-2 text-sm text-center capitalize text-gray-700">{child.gender == 'boys' ? 'Laki-laki' : 'Perempuan'}</td>
+                        <td className="px-6 py-2 text-sm text-center text-gray-700">{child.umur}</td>
+                        <td className="px-6 py-2 text-sm text-gray-700">
+                          <span
+                            className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${
+                              child.status_tinggi === 'Normal'
+                                ? 'bg-green-100 text-green-800'
+                                : child.status_tinggi === 'Stunting'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}
+                          >
+                            {child.status_tinggi}
+                          </span>
+                        </td>
+                        <td className="px-6 py-2 text-sm text-gray-700">
+                          <span
+                            className={`inline-flex rounded-full px-3 py-1 text-xs font-bold ${
+                              child.status_berat === 'Normal'
+                                ? 'bg-green-100 text-green-800'
+                                : child.status_berat === 'Stunting'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-red-100 text-red-800'
+                            }`}
+                          >
+                            {child.status_berat}
+                          </span>
+                        </td>
+                        <td className="px-6 py-2">
                           <div className="flex items-center gap-2">
                             <button
                               className="rounded p-2 text-gray-600 transition hover:bg-blue-400 hover:text-white"
