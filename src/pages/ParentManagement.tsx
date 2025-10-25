@@ -16,9 +16,11 @@ import type { Child } from '../types/children';
 import { useSupabaseResource } from '../hooks/useSupabaseResource';
 import { useDebounce } from '../hooks/useDebounce';
 import { usePagination } from '../hooks/usePagination';
-import { createParent, getParents } from '../services/parentService';
+import { createParent, deleteParent, getParents } from '../services/parentService';
 import { getChildren } from '../services/childService';
 import { Pagination } from '../features/shared/components/Pagination';
+import DeleteModal from '../components/DeleteModal';
+import { supabase } from '../lib/supabase/client';
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -45,6 +47,9 @@ const ParentManagement = () => {
   const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [selectedParent, setSelectedParent] = useState<Parent | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const createInitialFormState = () => ({
     no_kk: '',
     nama_ayah: '',
@@ -71,6 +76,7 @@ const ParentManagement = () => {
     isLoading: isParentsLoading,
     error: parentsError,
     refresh: refreshParents,
+    setData: setParents,
   } = useSupabaseResource<Parent[]>('parents', getParents, { initialData: [] });
 
   const {
@@ -80,6 +86,67 @@ const ParentManagement = () => {
   } = useSupabaseResource<Child[]>('children', getChildren, { initialData: [] });
 
   const [trend, setTrend] = useState({ total: 0, aktif: 0, anak: 0 });
+
+  useEffect(() => {
+    const channel = supabase
+      .channel('parents-management')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'DataOrangTua',
+        },
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            const newParent = payload.new as Parent;
+            setParents((prev) => {
+              const current = Array.isArray(prev) ? prev : [];
+              const next = [
+                newParent,
+                ...current.filter((parent) => String(parent.id) !== String(newParent.id)),
+              ];
+              return next.sort((a, b) => {
+                const first = a.created_at ?? '';
+                const second = b.created_at ?? '';
+                return second.localeCompare(first);
+              });
+            });
+            return;
+          }
+
+          if (payload.eventType === 'UPDATE') {
+            const updatedParent = payload.new as Parent;
+            setParents((prev) =>
+              (Array.isArray(prev) ? prev : [])
+                .map((parent) =>
+                  String(parent.id) === String(updatedParent.id) ? updatedParent : parent,
+                )
+                .sort((a, b) => {
+                  const first = a.created_at ?? '';
+                  const second = b.created_at ?? '';
+                  return second.localeCompare(first);
+                }),
+            );
+            return;
+          }
+
+          if (payload.eventType === 'DELETE') {
+            const deletedParent = payload.old as Parent;
+            setParents((prev) =>
+              (Array.isArray(prev) ? prev : []).filter(
+                (parent) => String(parent.id) !== String(deletedParent.id),
+              ),
+            );
+          }
+        },
+      )
+      .subscribe();
+
+    return () => {
+      void supabase.removeChannel(channel);
+    };
+  }, [setParents]);
 
   useEffect(() => {
     const totalParents = parents.length;
@@ -179,6 +246,51 @@ const ParentManagement = () => {
   } = usePagination(filteredParents, 10);
 
   const getChildCount = (parentId: string) => children.filter((child) => child?.DataOrangTua?.id === parentId).length;
+
+  const closeDeleteModal = () => {
+    setShowDeleteModal(false);
+    setSelectedParent(null);
+  };
+
+  const openDeleteModal = (parent: Parent) => {
+    const totalChildren = getChildCount(String(parent.id));
+    if (totalChildren > 0) {
+      toast.error('Tidak dapat menghapus data orang tua yang masih memiliki anak terdaftar');
+      return;
+    }
+    setSelectedParent(parent);
+    setShowDeleteModal(true);
+  };
+
+  const handleDeleteParent = async () => {
+    if (!selectedParent || isDeleting) {
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await toast.promise(
+        deleteParent(selectedParent.id),
+        {
+          loading: 'Menghapus data orang tua...',
+          success: 'Data orang tua berhasil dihapus',
+          error: (error) =>
+            error instanceof Error ? error.message : 'Gagal menghapus data orang tua',
+        },
+      );
+      setParents((prev) =>
+        (Array.isArray(prev) ? prev : []).filter(
+          (parent) => String(parent.id) !== String(selectedParent.id),
+        ),
+      );
+      closeDeleteModal();
+      await refreshParents();
+    } catch {
+      // Error toast already handled via toast.promise
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleAddParent = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -372,7 +484,7 @@ const ParentManagement = () => {
                               className={dangerActionButtonClass}
                               onClick={(event) => {
                                 event.stopPropagation();
-                                toast.info('Fitur hapus data orang tua belum tersedia');
+                                openDeleteModal(parent);
                               }}
                             >
                               <Trash2 className="h-4 w-4" />
@@ -397,6 +509,18 @@ const ParentManagement = () => {
           </div>
         </div>
       </div>
+
+      <DeleteModal
+        isOpen={showDeleteModal && Boolean(selectedParent)}
+        onClose={closeDeleteModal}
+        onConfirm={handleDeleteParent}
+        title="Hapus Data Orang Tua"
+        message={
+          selectedParent
+            ? `Apakah Anda yakin ingin menghapus data orang tua ${selectedParent.nama_ayah} & ${selectedParent.nama_ibu}?`
+            : ''
+        }
+      />
 
       {showAddModal ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-600/50 p-4 backdrop-blur-xs">

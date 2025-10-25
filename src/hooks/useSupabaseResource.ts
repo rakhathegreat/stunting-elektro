@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Dispatch, SetStateAction, useCallback, useEffect, useRef, useState } from 'react';
 
 const CACHE_TTL = 1000 * 60; // 1 minute
 
@@ -12,16 +12,29 @@ interface ResourceState<T> {
   isLoading: boolean;
   error: string | null;
   refresh: () => Promise<void>;
+  setData: Dispatch<SetStateAction<T>>;
 }
 
 const cache = new Map<string, { data: unknown; timestamp: number }>();
 
 export const useSupabaseResource = <T>(key: string, fetcher: () => Promise<T>, options: Options<T> = {}): ResourceState<T> => {
   const { enabled = true, initialData } = options;
-  const [data, setData] = useState<T>(initialData as T);
+  const [data, setStateData] = useState<T>(initialData as T);
   const [isLoading, setIsLoading] = useState(!initialData);
   const [error, setError] = useState<string | null>(null);
   const mountedRef = useRef(true);
+
+  const setData: Dispatch<SetStateAction<T>> = useCallback((value) => {
+    setStateData((previous) => {
+      const nextValue =
+        typeof value === 'function'
+          ? (value as (prevState: T) => T)(previous)
+          : value;
+
+      cache.set(key, { data: nextValue, timestamp: Date.now() });
+      return nextValue;
+    });
+  }, [key]);
 
   const load = useCallback(async () => {
     if (!enabled) {
@@ -45,6 +58,8 @@ export const useSupabaseResource = <T>(key: string, fetcher: () => Promise<T>, o
 
       if (mountedRef.current) {
         setData(result);
+      } else {
+        cache.set(key, { data: result, timestamp: now });
       }
     } catch (err) {
       if (mountedRef.current) {
@@ -78,5 +93,6 @@ export const useSupabaseResource = <T>(key: string, fetcher: () => Promise<T>, o
     isLoading,
     error,
     refresh,
+    setData,
   };
 };
