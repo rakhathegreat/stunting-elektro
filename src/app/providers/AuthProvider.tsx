@@ -46,7 +46,31 @@ export const AuthProvider = ({ children }: Props) => {
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    const { data } = await supabase.auth.getSession();
+
+    // If the session is already gone locally, ensure storage is cleared and exit early.
+    if (!data.session) {
+      await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+      setSession(null);
+      return;
+    }
+
+    const { error } = await supabase.auth.signOut();
+
+    if (error) {
+      const message = error.message?.toLowerCase() ?? '';
+      if (error.status === 403 || message.includes('session not found') || message.includes('auth session missing')) {
+        await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+        setSession(null);
+        return;
+      }
+
+      console.error('Gagal melakukan sign out:', error);
+      return;
+    }
+
+    await supabase.auth.signOut({ scope: 'local' }).catch(() => undefined);
+    setSession(null);
   };
 
   const value = useMemo(
