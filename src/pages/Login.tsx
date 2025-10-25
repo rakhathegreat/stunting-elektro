@@ -51,7 +51,7 @@ const Login = () => {
 
             <div className="space-y-2 sm:space-y-3">
               <h1 className="text-2xl mb-4 font-bold leading-snug text-slate-900 sm:text-3xl lg:text-[2.2rem]">
-                Deteksi stunting cepat. Cerdas. Terintegrasi.
+                Deteksi Resiko Stunting Cepat. Cerdas. Terintegrasi.
               </h1>
               <p className="text-sm text-slate-600 sm:text-base lg:line-clamp-3">
                 Pantau pertumbuhan berbasis AI dengan rekomendasi klinis untuk keputusan lebih cepat.
