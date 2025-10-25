@@ -205,7 +205,7 @@ const ParentDetail = () => {
               <p className="text-sm font-semibold text-gray-900">{registeredLabel}</p>
             </div>
             <button
-              className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
+              className="inline-flex items-center gap-2 rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-blue-700"
               onClick={handleEditToggle}
               disabled={!parent}
             >
@@ -255,10 +255,10 @@ const ParentDetail = () => {
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition ${
+                className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-semibold transition ${
                   activeTab === tab.id
                     ? 'bg-blue-600 text-white shadow-sm'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    : 'bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200'
                 }`}
               >
                 <tab.icon className="h-4 w-4" />
