@@ -234,7 +234,7 @@ const ParentManagement = () => {
             className="relative overflow-hidden rounded-2xl bg-white px-6 pb-6 pt-6 shadow-md transition-all hover:scale-[1.02] hover:shadow-modern-lg"
           >
             <dt>
-              <div className={`absolute rounded-xl bg-gradient-to-br from-${item.color}-500 to-${item.color}-700 p-3 shadow-modern`}>
+              <div className={`absolute rounded-xl bg-gradient-to-br from-${item.color}-500 to-${item.color}-600 p-3 shadow-modern`}>
                 <item.icon className="h-6 w-6 text-white" aria-hidden="true" />
               </div>
               <p className="ml-16 truncate text-sm font-semibold text-gray-500">{item.name}</p>
