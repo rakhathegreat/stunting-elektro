@@ -262,35 +262,43 @@ const ParentManagement = () => {
     setShowDeleteModal(true);
   };
 
-  const handleDeleteParent = async () => {
-    if (!selectedParent || isDeleting) {
-      return;
-    }
+const handleDeleteParent = async () => {
+  if (!selectedParent || isDeleting) {
+    return;
+  }
 
-    setIsDeleting(true);
-    try {
-      await toast.promise(
-        deleteParent(selectedParent.id),
-        {
-          loading: 'Menghapus data orang tua...',
-          success: 'Data orang tua berhasil dihapus',
-          error: (error) =>
-            error instanceof Error ? error.message : 'Gagal menghapus data orang tua',
-        },
-      );
-      setParents((prev) =>
-        (Array.isArray(prev) ? prev : []).filter(
-          (parent) => String(parent.id) !== String(selectedParent.id),
-        ),
-      );
-      closeDeleteModal();
-      await refreshParents();
-    } catch {
-      // Error toast already handled via toast.promise
-    } finally {
-      setIsDeleting(false);
-    }
-  };
+  setIsDeleting(true);
+  try {
+    await toast.promise(
+      deleteParent(selectedParent.id),
+      {
+        loading: 'Menghapus data orang tua...',
+        success: 'Data orang tua berhasil dihapus',
+        error: (error) =>
+          error instanceof Error ? error.message : 'Gagal menghapus data orang tua',
+      },
+    );
+    
+    // Update state parents secara langsung
+    setParents((prev) =>
+      (Array.isArray(prev) ? prev : []).filter(
+        (parent) => String(parent.id) !== String(selectedParent.id),
+      ),
+    );
+    
+    closeDeleteModal();
+    
+    // Force refresh data dari server
+    setTimeout(() => {
+      refreshParents();
+    }, 100);
+    
+  } catch {
+    // Error toast already handled via toast.promise
+  } finally {
+    setIsDeleting(false);
+  }
+};
 
   const handleAddParent = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
