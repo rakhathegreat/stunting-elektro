@@ -99,7 +99,7 @@ const Login = () => {
                 <Stethoscope className="h-6 w-6 text-white sm:h-7 sm:w-7" />
               </div>
               <h2 className="mt-4 text-xl font-bold text-slate-900 sm:text-2xl">Masuk StuntingCare</h2>
-              <p className="mt-1 text-xs font-medium text-slate-500 sm:text-sm">Gunakan akun petugas.</p>
+              <p className="mt-1 text-xs font-medium text-slate-500 sm:text-sm">Silahkan gunakan akun petugas.</p>
             </div>
 
             <form className="mt-6 space-y-4 sm:mt-8 sm:space-y-6" onSubmit={handleSubmit}>
