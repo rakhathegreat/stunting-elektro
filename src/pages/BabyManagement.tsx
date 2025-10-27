@@ -199,6 +199,21 @@ const BabyManagement = () => {
 
   const isEmpty = !isLoading && paginatedChildren.length === 0;
 
+  const formatParentNames = (child: Child) => {
+    const father = child.DataOrangTua?.nama_ayah?.trim();
+    const mother = child.DataOrangTua?.nama_ibu?.trim();
+    if (father && mother) {
+      return `${father} & ${mother}`;
+    }
+    if (father) {
+      return father;
+    }
+    if (mother) {
+      return mother;
+    }
+    return '-';
+  };
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 gap-5 px-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -332,7 +347,7 @@ const BabyManagement = () => {
                       >
                         <td className="px-6 py-2 text-xs font-medium text-gray-900">{child.nama}</td>
                         <td className="px-6 py-2 text-sm text-gray-700">
-                          {child.DataOrangTua?.nama_ayah} & {child.DataOrangTua?.nama_ibu}
+                          {formatParentNames(child)}
                         </td>
                         <td className="px-6 py-2 text-sm text-center capitalize text-gray-700">{child.gender == 'boys' ? 'Laki-laki' : 'Perempuan'}</td>
                         <td className="px-6 py-2 text-sm text-center text-gray-700">{child.umur}</td>

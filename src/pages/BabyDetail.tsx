@@ -43,6 +43,21 @@ const BabyDetail = () => {
     { initialData: [], enabled: Boolean(id) }
   );
 
+  const formatParentNames = (parent?: Child['DataOrangTua']) => {
+    const father = parent?.nama_ayah?.trim();
+    const mother = parent?.nama_ibu?.trim();
+    if (father && mother) {
+      return `${father} & ${mother}`;
+    }
+    if (father) {
+      return father;
+    }
+    if (mother) {
+      return mother;
+    }
+    return '-';
+  };
+
   const refreshAll = async () => {
     await refreshChild();
     await refreshGrowth();
@@ -277,7 +292,7 @@ const [columnCount, setColumnCount] = useState(() => {
                     onClick={() => navigate(`/parents/${child.id_orang_tua}`)}
                     className="text-start font-bold text-blue-600 transition-colors hover:text-blue-800"
                   >
-                    {child.DataOrangTua?.nama_ayah} & {child.DataOrangTua?.nama_ibu}
+                    {formatParentNames(child.DataOrangTua)}
                   </button>
                 </div>
               </div>
