@@ -89,6 +89,20 @@ const ParentDetail = () => {
     { initialData: [], enabled: Boolean(id) },
   );
 
+  const formatParentName = (value?: string | null) => {
+    if (typeof value !== 'string') {
+      return 'Belum diisi';
+    }
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : 'Belum diisi';
+  };
+  const formatParentNames = (father?: string | null, mother?: string | null) => {
+    const names = [father, mother]
+      .map((name) => (typeof name === 'string' ? name.trim() : ''))
+      .filter((name) => name.length > 0);
+    return names.length > 0 ? names.join(' & ') : 'Nama orang tua belum diisi';
+  };
+
   const tabs = useMemo(
     () => [
       { id: 'info', name: 'Informasi Pribadi', icon: User },
@@ -110,7 +124,14 @@ const ParentDetail = () => {
   const isLoading = isParentLoading || isChildrenLoading;
   const hasError = parentError || childrenError;
 
-  const parentNames = parent ? `${parent.nama_ayah} & ${parent.nama_ibu}` : 'Memuat...';
+  const parentNames = useMemo(() => {
+    if (!parent) {
+      return 'Memuat...';
+    }
+    return formatParentNames(parent.nama_ayah, parent.nama_ibu);
+  }, [parent]);
+  const fatherName = formatParentName(parent?.nama_ayah);
+  const motherName = formatParentName(parent?.nama_ibu);
   const totalChildren = children.length;
   const totalVisits = visitHistory.length;
   const lastVisitLabel = parent?.kunjungan_terakhir
@@ -299,6 +320,14 @@ const ParentDetail = () => {
                     <div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
                       <h4 className="text-base font-semibold text-gray-900">Informasi Latar Belakang</h4>
                       <div className="mt-4 space-y-3 text-sm text-gray-600">
+                        <div>
+                          <p className="text-xs uppercase tracking-wide text-gray-400">Nama Ayah</p>
+                          <p className="mt-1 font-medium text-gray-800">{fatherName}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs uppercase tracking-wide text-gray-400">Nama Ibu</p>
+                          <p className="mt-1 font-medium text-gray-800">{motherName}</p>
+                        </div>
                         <div>
                           <p className="text-xs uppercase tracking-wide text-gray-400">Pekerjaan</p>
                           <p className="mt-1 font-medium text-gray-800">{parent?.pekerjaan ?? '-'}</p>

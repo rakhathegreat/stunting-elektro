@@ -245,7 +245,20 @@ const ParentManagement = () => {
     setPageSize,
   } = usePagination(filteredParents, 10);
 
-  const getChildCount = (parentId: string) => children.filter((child) => child?.DataOrangTua?.id === parentId).length;
+  const formatParentNames = (father?: string | null, mother?: string | null) => {
+    const names = [father, mother]
+      .map((name) => (typeof name === 'string' ? name.trim() : ''))
+      .filter((name) => name.length > 0);
+    return names.length > 0 ? names.join(' & ') : 'Nama orang tua belum diisi';
+  };
+
+  const getChildCount = (parentId: string | number) => {
+    const targetId = String(parentId);
+    return children.filter((child) => {
+      const childParentId = child.id_orang_tua ?? child.DataOrangTua?.id;
+      return childParentId != null && String(childParentId) === targetId;
+    }).length;
+  };
 
   const closeDeleteModal = () => {
     setShowDeleteModal(false);
@@ -404,7 +417,7 @@ const handleDeleteParent = async () => {
               <table className="min-w-full divide-y divide-gray-100">
                 <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                   <tr>
-                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Nama</th>
+                    <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Orang Tua</th>
                     <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Alamat</th>
                     <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Jumlah Anak</th>
                     <th className="px-6 py-4 text-left text-xs font-bold uppercase tracking-wider text-gray-600">Status</th>
@@ -439,8 +452,7 @@ const handleDeleteParent = async () => {
                         className="cursor-pointer transition-colors hover:bg-gray-100"
                       >
                         <td className="px-6 py-4 text-sm font-medium text-gray-900">
-                          {parent.nama_ayah} & <br />
-                          {parent.nama_ibu}
+                          {formatParentNames(parent.nama_ayah, parent.nama_ibu)}
                         </td>
                         <td className="px-6 py-4 text-sm text-muted-foreground text-gray-700">
                           <div className="mt-1 flex items-center">
