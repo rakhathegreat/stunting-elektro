@@ -18,6 +18,18 @@ interface GrowthChartProps {
   gender?: string;
 }
 
+type WhoStandardRow = {
+  bulan: number;
+  sd3neg?: number;
+  sd2neg?: number;
+  sdneg?: number;
+  sd1neg?: number;
+  median?: number;
+  sd1?: number;
+  sd2?: number;
+  sd3?: number;
+};
+
 const normalizeGender = (gender?: string) => {
   if (!gender) return 'boys';
   if (gender.toLowerCase().startsWith('l')) return 'boys';
@@ -36,6 +48,7 @@ const GrowthChart = ({ data, selectedMetric, gender: genderProp }: GrowthChartPr
         : gender === 'boys'
         ? whoStandards.weightBoys
         : whoStandards.weightGirls;
+    const sourceRows = source as WhoStandardRow[];
 
     const childMap = new Map<number, GrowthRecord>();
     data.forEach((record) => {
@@ -44,39 +57,28 @@ const GrowthChart = ({ data, selectedMetric, gender: genderProp }: GrowthChartPr
       }
     });
 
+    const whoMap = new Map<number, WhoStandardRow>(sourceRows.map((item) => [item.bulan, item]));
+
     const allMonths = new Set<number>();
-    source.forEach((who) => allMonths.add(who.bulan));
+    sourceRows.forEach((who) => allMonths.add(who.bulan));
     data.forEach((record) => allMonths.add(record.bulan ?? 0));
 
     return Array.from(allMonths)
       .sort((a, b) => a - b)
       .map((month) => {
-        const who = source.find((item) => item.bulan === month);
+        const who = whoMap.get(month);
         const record = childMap.get(month);
-
-        const sangatPendek = who?.sd3neg ?? null;
-        const pendek = who?.sd2neg ?? null;
-        const normal = who?.median ?? null;
-        const tinggi = who?.sd1 ?? null;
         const anakValue = selectedMetric === 'tinggi' ? record?.tinggi : record?.berat;
-
-        if (selectedMetric === 'tinggi') {
-          return {
-            bulan: month,
-            sangat_pendek: sangatPendek,
-            pendek,
-            normal,
-            tinggi,
-            anak: anakValue ?? null,
-          };
-        }
 
         return {
           bulan: month,
-          sangat_kurus: sangatPendek,
-          kurus: pendek,
-          normal,
-          gemuk: tinggi,
+          minus3sd: who?.sd3neg ?? null,
+          minus2sd: who?.sd2neg ?? null,
+          minus1sd: (who?.sdneg ?? who?.sd1neg) ?? null,
+          median: who?.median ?? null,
+          plus1sd: who?.sd1 ?? null,
+          plus2sd: who?.sd2 ?? null,
+          plus3sd: who?.sd3 ?? null,
           anak: anakValue ?? null,
         };
       });
@@ -94,21 +96,28 @@ const GrowthChart = ({ data, selectedMetric, gender: genderProp }: GrowthChartPr
           <Tooltip />
           <Legend wrapperStyle={{ paddingTop: '20px' }} />
 
-          {selectedMetric === 'tinggi' ? (
-            <>
-              <Line type="monotone" dataKey="normal" stroke="#82ca9d" strokeDasharray="5 5" opacity={0.5} name="Normal" dot={false} strokeWidth={2} />
-              <Line type="monotone" dataKey="pendek" stroke="#8884d8" strokeDasharray="5 5" opacity={0.5} name="Pendek" dot={false} strokeWidth={2} />
-              <Line type="monotone" dataKey="sangat_pendek" stroke="#ff0000" strokeDasharray="5 5" opacity={0.5} name="Sangat Pendek" dot={false} strokeWidth={2} />
-              <Line type="monotone" dataKey="tinggi" stroke="#ff7300" strokeDasharray="5 5" opacity={0.5} name="Tinggi" dot={false} strokeWidth={2} />
-            </>
-          ) : (
-            <>
-              <Line type="monotone" dataKey="sangat_kurus" stroke="#ff0000" strokeDasharray="5 5" opacity={0.5} name="Sangat Kurus" dot={false} strokeWidth={2} />
-              <Line type="monotone" dataKey="kurus" stroke="#8884d8" strokeDasharray="5 5" opacity={0.5} name="Kurus" dot={false} strokeWidth={2} />
-              <Line type="monotone" dataKey="normal" stroke="#82ca9d" strokeDasharray="5 5" opacity={0.5} name="Normal" dot={false} strokeWidth={2} />
-              <Line type="monotone" dataKey="gemuk" stroke="#ff7300" strokeDasharray="5 5" opacity={0.5} name="Gemuk" dot={false} strokeWidth={2} />
-            </>
-          )}
+          {[
+            { key: 'minus3sd', label: '-3 SD', stroke: '#dc2626' },
+            { key: 'minus2sd', label: '-2 SD', stroke: '#ea580c' },
+            { key: 'minus1sd', label: '-1 SD', stroke: '#16a34a' },
+            { key: 'median', label: 'Median', stroke: '#22c55e' },
+            { key: 'plus1sd', label: '+1 SD', stroke: '#16a34a' },
+            { key: 'plus2sd', label: '+2 SD', stroke: '#ea580c' },
+            { key: 'plus3sd', label: '+3 SD', stroke: '#dc2626' },
+          ].map((line) => (
+            <Line
+              key={line.key}
+              type="monotone"
+              dataKey={line.key}
+              stroke={line.stroke}
+              strokeDasharray="4 4"
+              opacity={0.7}
+              name={line.label}
+              dot={false}
+              strokeWidth={2}
+              connectNulls
+            />
+          ))}
 
           <Line
             type="monotone"
